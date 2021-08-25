@@ -2,6 +2,7 @@ use anyhow::Context;
 use tracing::level_filters::LevelFilter;
 use tracing_log::LogTracer;
 use tracing_subscriber::fmt;
+#[cfg(not(feature = "disable_logging"))]
 pub fn setup_logs(log_level: LevelFilter) -> anyhow::Result<()> {
     LogTracer::init().context("Cannot setup_logs")?;
     let default_level = format!("[]={}", log_level);
@@ -13,5 +14,9 @@ pub fn setup_logs(log_level: LevelFilter) -> anyhow::Result<()> {
         .finish();
     tracing::subscriber::set_global_default(subscriber).context("Cannot setup_logs")?;
     log_panics::init();
+    Ok(())
+}
+#[cfg(feature = "disable_logging")]
+pub fn setup_logs(_log_level: LevelFilter) -> anyhow::Result<()> {
     Ok(())
 }

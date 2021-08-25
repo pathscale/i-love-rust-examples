@@ -24,3 +24,6 @@ tracing-log = "*"
 tracing-subscriber = "*"
 log-panics = "*"
 pin-utils = "*"
+
+[features]
+disable_logging = []
