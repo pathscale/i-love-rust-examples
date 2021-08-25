@@ -1,59 +1,17 @@
-use tokio::sync::mpsc::{self, error::SendError};
-use reqwest::Client;
-use nonzero_ext::nonzero;
-use governor::{RateLimiter, Quota};
+use tokio::sync::mpsc;
 use anyhow::Result;
 use async_compat::CompatExt;
 use futures::Sink;
 use rust_examples::logger::setup_logs;
 use tracing::level_filters::LevelFilter;
 use tracing::*;
-use std::time::Duration;
 use pin_utils::pin_mut;
+use rust_examples::poll_data::fetch_from_polygon;
+use rust_examples::analyze::{thread2, thread3};
+use rust_examples::YourDataStruct;
+
 const CHANNEL_BUFFER_SIZE: usize = 8; //capacity of the channels
 
-#[derive(Default, Debug)]
-struct YourDataStruct {
-    //your awesome data...
-}
-
-// This fetch JSON from Polygon
-async fn fetch_from_polygon(tx_t1: mpsc::Sender<String>) -> Result<(), reqwest::Error> {
-    let client = Client::builder()
-        .tcp_keepalive(Some(Duration::from_secs(60))) //change the value as you like
-        .build()?;
-    let lim = RateLimiter::direct(
-        Quota::per_minute(nonzero!(20u32))
-            .allow_burst(nonzero!(1u32))
-    );
-    loop {
-        lim.until_ready().await;
-        let body = client.get("https://www.rust-lang.org")
-            .send()
-            .await?
-            .json()
-            .await?;
-        tx_t1.send(body).await.unwrap(); //sending the result to the next thread.
-    }
-}
-
-//expensive computation, runs on the rayon thread pool
-fn thread2(mut rx_t1: mpsc::Receiver<String>, tx_t2: mpsc::Sender<YourDataStruct>) -> Result<(), SendError<YourDataStruct>> {
-    while let Some(_body) = rx_t1.blocking_recv() { //get the result from the previous thread.
-        //do your first data processing here...
-        tx_t2.blocking_send(YourDataStruct::default())?; //send the result to the next thread.
-    }
-    Ok(())
-}
-
-//expensive computation, runs on the rayon thread pool
-fn thread3(mut rx_t2: mpsc::Receiver<YourDataStruct>, tx_t3: mpsc::Sender<YourDataStruct>) -> Result<(), SendError<YourDataStruct>> {
-    while let Some(data) = rx_t2.blocking_recv() { //get the result from the previous thread.
-        //do your second data processing here...
-        tx_t3.blocking_send(data)?; //send the result to the next thread.
-    }
-    Ok(())
-}
 
 async fn websocket_send(_rx_t3: mpsc::Receiver<YourDataStruct>) -> Result<()> {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:4444").await?;

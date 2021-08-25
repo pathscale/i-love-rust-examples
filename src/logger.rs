@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use anyhow::Context;
 use tracing::level_filters::LevelFilter;
 use tracing_log::LogTracer;
