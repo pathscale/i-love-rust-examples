@@ -6,13 +6,20 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tungstenite = "*"
 tokio = { version = "1", features = ["full"] }
 crossbeam = "*"
 serde = "*"
 nonzero_ext = "*"
-paperplane = "*"
 reqwest = { version = "*", features = ["serde_json", "json"] }
 governor = "*"
 rayon = "*"
-
+#tungstenite = "*" # included in async-tungstenite
+async-tungstenite = { version = "*", features = ["tokio-rustls"] }
+anyhow = "*"
+async-compat = "*"
+futures = "*"
+tracing = "*"
+tracing-log = "*"
+tracing-subscriber = "*"
+log-panics = "*"
+pin-utils = "*"
