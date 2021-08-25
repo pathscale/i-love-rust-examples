@@ -37,7 +37,7 @@ async fn fetch_from_polygon(tx_t1: mpsc::Sender<String>) -> Result<(), reqwest::
 
 //expensive computation, runs on the rayon thread pool
 fn thread2(mut rx_t1: mpsc::Receiver<String>, tx_t2: mpsc::Sender<YourDataStruct>) -> Result<(), SendError<YourDataStruct>> {
-    while let Some(body) = rx_t1.blocking_recv() { //get the result from the previous thread.
+    while let Some(_body) = rx_t1.blocking_recv() { //get the result from the previous thread.
         //do your first data processing here...
         tx_t2.blocking_send(YourDataStruct::default())?; //send the result to the next thread.
     }
@@ -68,6 +68,7 @@ async fn main() {
     tokio::spawn(fetch_from_polygon(tx_t1));
 
     let (tx_t2, rx_t2) = mpsc::channel(CHANNEL_BUFFER_SIZE);
+
     rayon::spawn(|| {
         thread2(rx_t1, tx_t2).unwrap();
     });
