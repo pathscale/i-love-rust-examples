@@ -26,4 +26,4 @@ log-panics = "*"
 pin-utils = "*"
 
 [features]
-disable_logging = []
+enable_logging = []
