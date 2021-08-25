@@ -9,10 +9,20 @@ use pin_utils::pin_mut;
 use rust_examples::poll_data::fetch_from_polygon;
 use rust_examples::analyze::{thread2, thread3};
 use rust_examples::YourDataStruct;
+use async_tungstenite::tungstenite::handshake::server::{Callback, Request, Response, ErrorResponse};
 
 const CHANNEL_BUFFER_SIZE: usize = 8; //capacity of the channels
 
+struct WsCallback {
 
+}
+
+impl Callback for WsCallback {
+    fn on_request(self, request: &Request, response: Response) -> Result<Response, ErrorResponse> {
+        debug!("on_request: {:?}", request);
+        Ok(response)
+    }
+}
 async fn websocket_send(_rx_t3: mpsc::Receiver<YourDataStruct>) -> Result<()> {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:4444").await?;
     loop {
@@ -20,7 +30,7 @@ async fn websocket_send(_rx_t3: mpsc::Receiver<YourDataStruct>) -> Result<()> {
         info!("Accepted stream from {}", addr);
         tokio::spawn(async move {
             let result = async {
-                let stream = async_tungstenite::accept_async(stream.compat()).await?;
+                let stream = async_tungstenite::accept_hdr_async(stream.compat(), WsCallback{}).await?;
                 pin_mut!(stream);
                 stream.as_mut().start_send(async_tungstenite::tungstenite::Message::Text("hello world".to_owned()))?;
                 Ok::<(), anyhow::Error>(())
