@@ -20,6 +20,7 @@ struct WsCallback {
 impl Callback for WsCallback {
     fn on_request(self, request: &Request, response: Response) -> Result<Response, ErrorResponse> {
         debug!("on_request: {:?}", request);
+        println!("Sec-WebSocket-Protocol: {:?}", request.headers().get("Sec-WebSocket-Protocol"));
         Ok(response)
     }
 }
