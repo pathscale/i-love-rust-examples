@@ -28,6 +28,8 @@ serde_json = "*"
 ijson = "*"
 peroxide = "*"
 chrono = "*"
+static_assertions = "*"
+virtual-table = { git = " https://github.com/nschoellhorn/virtual-table" }
 
 [features]
 enable_logging = []

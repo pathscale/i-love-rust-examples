@@ -1,0 +1,6 @@
+[submodule "virtual-table"]
+	path = virtual-table
+	url = https://github.com/nschoellhorn/virtual-table
+[submodule "hacked/virtual-table"]
+	path = hacked/virtual-table
+	url = https://github.com/nschoellhorn/virtual-table
