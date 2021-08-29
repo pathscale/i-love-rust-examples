@@ -8,7 +8,7 @@ use tracing::*;
 use std::time::Duration;
 
 // This fetch JSON from Polygon
-pub async fn fetch_from_polygon(tx_t1: mpsc::Sender<String>) -> Result<(), reqwest::Error> {
+pub async fn fetch_from_polygon(tx_t1: mpsc::Sender<String>) -> Result<()>{
     let client = Client::builder()
         .tcp_keepalive(Some(Duration::from_secs(60))) //change the value as you like
         .build()?;
@@ -18,10 +18,10 @@ pub async fn fetch_from_polygon(tx_t1: mpsc::Sender<String>) -> Result<(), reqwe
     );
     loop {
         lim.until_ready().await;
-        let body = client.get("https://www.rust-lang.org")
+        let body = client.get("https://jsonplaceholder.typicode.com/users")
             .send()
             .await?
-            .json()
+            .text()
             .await?;
         tx_t1.send(body).await.unwrap(); //sending the result to the next thread.
     }

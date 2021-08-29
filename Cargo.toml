@@ -24,6 +24,8 @@ tracing-log = "*"
 tracing-subscriber = "*"
 log-panics = "*"
 pin-utils = "*"
+serde_json = "*"
+ijson = "*"
 
 [features]
 enable_logging = []

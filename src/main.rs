@@ -10,6 +10,7 @@ use rust_examples::poll_data::fetch_from_polygon;
 use rust_examples::analyze::{thread2, thread3};
 use rust_examples::YourDataStruct;
 use async_tungstenite::tungstenite::handshake::server::{Callback, Request, Response, ErrorResponse};
+use rust_examples::utils::{error_handled, error_handled_sync};
 
 const CHANNEL_BUFFER_SIZE: usize = 8; //capacity of the channels
 
@@ -46,19 +47,19 @@ async fn websocket_send(_rx_t3: mpsc::Receiver<YourDataStruct>) -> Result<()> {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    setup_logs(LevelFilter::INFO)?;
+    setup_logs(LevelFilter::DEBUG)?;
     info!("Starting server");
     let (tx_t1, rx_t1) = mpsc::channel(CHANNEL_BUFFER_SIZE);
-    tokio::spawn(fetch_from_polygon(tx_t1));
+    tokio::spawn(error_handled(fetch_from_polygon(tx_t1)));
 
     let (tx_t2, rx_t2) = mpsc::channel(CHANNEL_BUFFER_SIZE);
 
     rayon::spawn(|| {
-        thread2(rx_t1, tx_t2).unwrap();
+        error_handled_sync(thread2(rx_t1, tx_t2));
     });
     let (tx_t3, rx_t3) = mpsc::channel(CHANNEL_BUFFER_SIZE);
     rayon::spawn(|| {
-        thread3(rx_t2, tx_t3).unwrap();
+        error_handled_sync(thread3(rx_t2, tx_t3));
     });
     //repeat this steps for each threads you want to have...
 
