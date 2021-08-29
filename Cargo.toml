@@ -26,6 +26,8 @@ log-panics = "*"
 pin-utils = "*"
 serde_json = "*"
 ijson = "*"
+peroxide = "*"
+chrono = "*"
 
 [features]
 enable_logging = []
