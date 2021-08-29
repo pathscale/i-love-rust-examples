@@ -9,7 +9,7 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 crossbeam = "*"
-serde = "*"
+serde = { version = "*", features = ["derive"] }
 nonzero_ext = "*"
 reqwest = { version = "*", features = ["serde_json", "json"] }
 governor = "*"

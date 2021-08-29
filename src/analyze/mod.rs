@@ -1,14 +1,48 @@
 use tokio::sync::mpsc;
-use anyhow::{Result, Context};
+use anyhow::Result;
 use crate::YourDataStruct;
 #[allow(unused_imports)]
 use tracing::*;
 use peroxide::prelude::{DataFrame, Series, TypedVector, Printable};
+use serde::{Serialize, Deserialize};
 
 //expensive computation, runs on the rayon thread pool
 pub fn thread2(mut rx_t1: mpsc::Receiver<String>, tx_t2: mpsc::Sender<YourDataStruct>) -> Result<()> {
-    while let Some(body) = rx_t1.blocking_recv() { //get the result from the previous thread.
-        let data: ijson::IValue = serde_json::from_str(&body)?;
+    while let Some(body) = rx_t1.blocking_recv() {
+        //get the result from the previous thread.
+        #[derive(Debug, Serialize, Deserialize)]
+        struct PersonInfo {
+            id: i64,
+            name: String,
+            username: String,
+            email: String,
+            address: PersonInfoAddress,
+            phone: String,
+            website: String,
+            company: PersonInfoCompany,
+        }
+        #[derive(Debug, Serialize, Deserialize)]
+        struct PersonInfoAddress {
+            street: String,
+            suite: String,
+            city: String,
+            zipcode: String,
+            geo: Geo,
+        }
+        #[derive(Debug, Serialize, Deserialize)]
+        struct Geo {
+            lat: String,
+            lng: String,
+        }
+        #[derive(Debug, Serialize, Deserialize)]
+        struct PersonInfoCompany {
+            name: String,
+            #[serde(rename = "catchPhrase")]
+            catch_phrase: String,
+            bs: String,
+        }
+
+        let data: Vec<PersonInfo> = serde_json::from_str(&body)?;
         /*
          {
           "id": 10,
@@ -27,18 +61,15 @@ pub fn thread2(mut rx_t1: mpsc::Receiver<String>, tx_t2: mpsc::Sender<YourDataSt
         let mut phone: Vec<String> = vec![];
         let mut website: Vec<String> = vec![];
         let mut insertion_time: Vec<String> = vec![];
-        fn extract_string(ser: &mut Vec<String>, item: &ijson::IValue, key: &str) -> anyhow::Result<()> {
-            ser.push(item.get(key).with_context(|| format!("Missing {}", key))?.as_string().with_context(|| format!("{} is not string", key))?.to_string());
-            Ok(())
-        }
-        for item in data.as_array().context("Is not array")? {
+
+        for item in data {
             info!("Parsed data {:?}", item);
-            id.push(item.get("id").context("Missing id")?.as_number().context("Is not number")?.to_i64().context("Is not i64")?);
-            extract_string(&mut name, item, "name")?;
-            extract_string(&mut username, item, "username")?;
-            extract_string(&mut email, item, "email")?;
-            extract_string(&mut website, item, "website")?;
-            extract_string(&mut phone, item, "phone")?;
+            id.push(item.id);
+            name.push(item.name);
+            username.push(item.username);
+            email.push(item.email);
+            website.push(item.website);
+            phone.push(item.phone);
 
             // current insertion time
             insertion_time.push(chrono::Utc::now().to_rfc3339());
@@ -53,6 +84,7 @@ pub fn thread2(mut rx_t1: mpsc::Receiver<String>, tx_t2: mpsc::Sender<YourDataSt
                 Series::new(website),
                 Series::new(insertion_time)]);
         frame.print();
+
         //do your first data processing here...
         tx_t2.blocking_send(YourDataStruct::default())?; //send the result to the next thread.
     }
