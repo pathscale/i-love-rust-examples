@@ -1,5 +1,5 @@
 #![allow(unused_imports)]
-use anyhow::Context;
+use eyre::*;
 use tracing::level_filters::LevelFilter;
 use tracing_log::LogTracer;
 use tracing_subscriber::fmt;
@@ -18,6 +18,6 @@ pub fn setup_logs(log_level: LevelFilter) -> anyhow::Result<()> {
     Ok(())
 }
 #[cfg(not(feature = "enable_logging"))]
-pub fn setup_logs(_log_level: LevelFilter) -> anyhow::Result<()> {
+pub fn setup_logs(_log_level: LevelFilter) -> Result<()> {
     Ok(())
 }

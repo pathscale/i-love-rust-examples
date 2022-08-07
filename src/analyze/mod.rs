@@ -1,5 +1,5 @@
 use tokio::sync::mpsc;
-use anyhow::Result;
+use eyre::Result;
 use crate::YourDataStruct;
 #[allow(unused_imports)]
 use tracing::*;

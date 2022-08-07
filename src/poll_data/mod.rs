@@ -2,7 +2,7 @@ use tokio::sync::mpsc;
 use reqwest::Client;
 use nonzero_ext::nonzero;
 use governor::{RateLimiter, Quota};
-use anyhow::Result;
+use eyre::Result;
 #[allow(unused_imports)]
 use tracing::*;
 use std::time::Duration;
