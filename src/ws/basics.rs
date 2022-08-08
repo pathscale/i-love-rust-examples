@@ -1,6 +1,7 @@
-use std::borrow::Cow;
-use async_tungstenite::stream::Stream;
-use eyre::*;
+
+
+use async_tungstenite::tungstenite::Message;
+
 use futures::future::BoxFuture;
 use serde::*;
 
@@ -10,12 +11,12 @@ pub struct WsRequest {
     pub seq: u32,
     pub data: serde_json::Value,
 }
-
+#[derive(Debug, Clone)]
 pub struct Connection {
     pub connection_id: u32,
     pub user_id: u32,
     pub role: u32,
-    pub send_tx: tokio::sync::mpsc::Sender<WsResponse>
+    pub send_tx: tokio::sync::mpsc::Sender<Message>
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
@@ -48,6 +49,6 @@ pub enum AsyncWsResponse {
     Async(BoxFuture<'static, WsResponse>),
 }
 
-pub trait RequestHandler {
+pub trait RequestHandler: Send + Sync {
     fn handle(&self, conn: Connection, req: WsRequest) -> AsyncWsResponse;
 }

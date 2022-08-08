@@ -32,9 +32,9 @@ impl DataFrameSyncBuilder {
     }
 
     pub fn build(self) -> DataFrameSync {
-        let rows = self.rows.expect("Did not initialize rows");
+        let _rows = self.rows.expect("Did not initialize rows");
 
-        let mut frame = Table::create("table".to_owned(), self.definitions);
+        let frame = Table::create("table".to_owned(), self.definitions);
 
 
         DataFrameSync {
