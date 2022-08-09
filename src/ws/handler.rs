@@ -12,9 +12,10 @@ use futures::{SinkExt, Stream};
 use tracing::*;
 use async_tungstenite::tungstenite::Message;
 use async_tungstenite::WebSocketStream;
+
 use tokio::net::TcpStream;
-use crate::ws::basics::{Connection};
-use crate::ws::{VerifyProtocol, WsEndpoint};
+use crate::ws::basics::{AsyncWsResponse, Connection, WsRequest, WsResponseError};
+use crate::ws::{JsonVerifier, VerifyProtocol, WsEndpoint};
 
 pub struct WsStream {
     stream: WebSocketStream<Compat<TcpStream>>,
@@ -23,11 +24,12 @@ pub struct WsStream {
 pub struct WebsocketHandler {
     pub handlers: HashMap<u32, WsEndpoint>,
     pub connection: HashMap<u32, Arc<WsStream>>,
+    pub verifier: JsonVerifier,
 }
 
 struct ReadWrite<'a> {
     send_rx: &'a mut mpsc::Receiver<Message>,
-    stream: &'a mut WebSocketStream<Compat<TcpStream>>,
+    stream: &'a mut WsStream,
 }
 
 enum WsEvent {
@@ -44,7 +46,7 @@ impl<'a> Future for ReadWrite<'a> {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
         let mut this = self.as_mut();
-        match Pin::new(&mut this.stream).poll_next(cx) {
+        match Pin::new(&mut this.stream.stream).poll_next(cx) {
             Poll::Ready(Some(x)) => {
                 let x: Result<Message, WsError> = x;
                 return match x {
@@ -78,20 +80,23 @@ impl WebsocketHandler {
     async fn handle_request(self: Arc<Self>, addr: SocketAddr, stream: TcpStream) {
         let result: Result<(), Error> = async {
             let (tx, mut rx) = mpsc::channel(1);
-            let mut stream = wrap_error(async_tungstenite::accept_hdr_async(stream.compat(), VerifyProtocol {
+            let stream = wrap_error(async_tungstenite::accept_hdr_async(stream.compat(), VerifyProtocol {
                 tx
             }).await)?;
+            let mut stream = WsStream {
+                stream
+            };
             let (msg_tx, mut msg_rx) = mpsc::channel(100);
             let mut conn = Connection {
                 connection_id: 0,
                 user_id: 0,
                 role: 0,
-                send_tx: msg_tx,
+                send_tx: msg_tx.clone(),
             };
             // TODO: handle connections
             let headers = rx.recv().await.ok_or_else(|| eyre!("Failed to receive ws headers"))?;
             Self::handle_headers(&headers, &mut conn).await?;
-            // TODO: receive message from stream
+            let conn = Arc::new(conn);
             loop {
                 let read_write = ReadWrite {
                     send_rx: &mut msg_rx,
@@ -106,43 +111,71 @@ impl WebsocketHandler {
                         info!(?addr, "Transmit side terminated");
                         break;
                     }
-                    WsEvent::Request(_req) => {
-                        // TODO: verify and parse
-                        // TODO: execute
-                    }
                     WsEvent::Response(resp) => {
-                        stream.send(resp).await?;
+                        stream.stream.send(resp).await?;
                     }
                     WsEvent::Error(err) => {
                         wrap_error(Err(err))?;
                     }
+                    WsEvent::Request(req) => {
+                        let obj: Result<WsRequest> = match req {
+                            Message::Text(t) => { self.verifier.try_parse(t.as_bytes()) }
+                            Message::Binary(b) => { self.verifier.try_parse(b.as_ref()) }
+                            Message::Ping(_) => {
+                                continue;
+                            }
+                            Message::Pong(_) => {
+                                continue;
+                            }
+                            Message::Close(_) => {
+                                info!(?addr, "Receive side terminated");
+                                break;
+                            }
+                        };
+                        let req = match obj {
+                            Ok(req) => { req }
+                            Err(x) => {
+                                // request is not valid json
+                                stream.stream.send(Message::Text(serde_json::to_string(&WsResponseError {
+                                    method: 0,
+                                    code: 0,
+                                    seq: 0,
+                                    reason: x.to_string(),
+                                })?)).await?;
+                                continue;
+                            }
+                        };
+                        let handler = self.handlers.get(&req.method);
+                        let handler = match handler {
+                            Some(handler) => {handler}
+                            None => {
+                                stream.stream.send(Message::Text(serde_json::to_string(&WsResponseError {
+                                    method: 0,
+                                    code: 0,
+                                    seq: req.seq,
+                                    reason: format!("Could not find handler for method code {}", req.method),
+                                })?)).await?;
+                                continue;
+                            }
+                        };
+                        let result = handler.handler.handle(Arc::clone(&conn), req);
+                        match result {
+                            AsyncWsResponse::Sync(resp) => {
+                                let j = resp.dump_json();
+                                stream.stream.send(Message::Text(j)).await?;
+                            }
+                            AsyncWsResponse::Async(fut) => {
+                                let tx = msg_tx.clone();
+                                tokio::spawn(async move {
+                                    let resp = fut.await;
+                                    let j = resp.dump_json();
+                                    let _ = tx.send(Message::Text(j)).await;
+                                });
+                            }
+                        }
+                    }
                 }
-                // match msg_rx.recv().await {
-                //     Some(WsResponse::Immediate {
-                //              method,
-                //              seq,
-                //              params
-                //          }) => {
-                //         stream.as_mut().start_send(Message::Text(serde_json::to_string(&json! {{
-                //             "seq": seq,
-                //             "method": method,
-                //             "params": params,
-                //         }})?))?;
-                //     }
-                //     Some(WsResponse::Error {
-                //              code, seq, reason
-                //          }) => {
-                //         stream.as_mut().start_send(Message::Text(serde_json::to_string(&json! {{
-                //             "seq": seq,
-                //             "code": code,
-                //             "reason": reason,
-                //         }})?))?;
-                //     }
-                //     None => {
-                //         break;
-                //     }
-                //     _ => todo!(),
-                // }
+
             }
             Ok(())
         }.await;

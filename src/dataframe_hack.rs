@@ -3,7 +3,6 @@ use std::sync::Arc;
 use std::cell::UnsafeCell;
 use std::sync::atomic::AtomicUsize;
 
-#[derive()]
 pub struct DataFrameSyncBuilder {
     rows: Option<usize>,
     name: String,
@@ -46,6 +45,7 @@ impl DataFrameSyncBuilder {
 }
 
 #[derive(Debug)]
+#[allow(unused)]
 pub struct DataFrameSync {
     frame: Arc<UnsafeCell<Table>>,
     index: AtomicUsize,
@@ -54,7 +54,7 @@ pub struct DataFrameSync {
 
 impl DataFrameSync {
     pub fn update_row(&self, row: Row) {
-        unsafe {
+        let _ = unsafe {
             &mut *self.frame.get()
         }.update_row(row);
     }

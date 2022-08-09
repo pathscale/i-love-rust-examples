@@ -5,7 +5,7 @@ pub mod web;
 pub mod conduit;
 pub mod utils;
 pub mod ws;
-pub(crate) mod dataframe_hack;
+pub mod dataframe_hack;
 
 #[derive(Default, Debug)]
 pub struct YourDataStruct {
