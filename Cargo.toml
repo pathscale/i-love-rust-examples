@@ -27,6 +27,7 @@ governor = "*"
 #tungstenite = "*" # included in async-tungstenite
 async-tungstenite = { version = "*", features = ["tokio-rustls"] }
 async-compat = "*"
+itertools = "0.10.3"
 futures = "*"
 tracing-log = "*"
 log-panics = "*"
@@ -36,6 +37,7 @@ ijson = "*"
 peroxide = "*"
 chrono = "*"
 static_assertions = "*"
+tokio-postgres = "*"
 virtual-table = { git = " https://github.com/nschoellhorn/virtual-table" }
 
 [features]
@@ -44,6 +46,10 @@ enable_logging = []
 [lib]
 name = "lib"
 path = "src/lib/mod.rs"
+
+[[bin]]
+name = "codegen"
+path = "src/codegen/mod.rs"
 
 [[bin]]
 name = "auth"
