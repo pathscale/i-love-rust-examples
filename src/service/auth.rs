@@ -1,16 +1,9 @@
 use std::sync::Arc;
-
 use eyre::*;
-
-
 use tracing::level_filters::LevelFilter;
 use tracing::*;
-
-
-use rust_example::logger::setup_logs;
-
-
-use rust_example::ws::{JsonVerifier, WebsocketHandler};
+use lib::logger::setup_logs;
+use lib::ws::{JsonVerifier, WebsocketHandler};
 
 
 #[tokio::main]

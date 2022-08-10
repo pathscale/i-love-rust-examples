@@ -40,3 +40,19 @@ virtual-table = { git = " https://github.com/nschoellhorn/virtual-table" }
 
 [features]
 enable_logging = []
+
+[lib]
+name = "lib"
+path = "src/lib/mod.rs"
+
+[[bin]]
+name = "auth"
+path = "src/service/auth.rs"
+
+[[bin]]
+name = "user"
+path = "src/service/user.rs"
+
+[[bin]]
+name = "admin"
+path = "src/service/admin.rs"
