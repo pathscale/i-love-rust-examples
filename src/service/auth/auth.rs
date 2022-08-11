@@ -1,4 +1,3 @@
-use eyre::*;
 use lib::logger::setup_logs;
 use lib::ws::{JsonVerifier, WebsocketHandler};
 use std::sync::Arc;
@@ -15,6 +14,6 @@ async fn main() -> Result<()> {
         connection: Default::default(),
         verifier: JsonVerifier {},
     };
-    Arc::new(executor).listen().await?;
+    Arc::new(executor).listen("0.0.0.0:4444").await?;
     Ok(())
 }

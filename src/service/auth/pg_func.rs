@@ -5,7 +5,7 @@ pub fn get_auth_pg_func() -> Vec<ProceduralFunction> {
         vec![Field::new("sum", Type::Int)],
         r#"
 BEGIN
-    RETURN QUERY SELECT $a + $b;
+    RETURN QUERY SELECT $a + $b AS sum;
 END
         "#,
     )]
