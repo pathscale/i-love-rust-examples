@@ -18,7 +18,7 @@ impl ToSql for Type {
                 let mut fields = fields
                     .iter()
                     .map(|x| format!("{} {}", x.name, x.ty.to_sql()));
-                format!("table ({})", fields.join(", "))
+                format!("table (\n{}\n)", fields.join(",\n"))
             }
             Type::DataTable(_, _) => {
                 todo!()
