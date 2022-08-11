@@ -24,7 +24,7 @@ impl DatabaseClient {
         let rows = self
             .client
             .query(
-                "SELECT * FROM api.fun_auth_add(a => 0::int,b => 1::int);",
+                "SELECT * FROM api.fun_auth_add(a_a => $1::int, a_b => $2::int);",
                 &[&req.a, &req.b],
             )
             .await?;
@@ -33,7 +33,7 @@ impl DatabaseClient {
         };
         for row in rows {
             let r = FunAuthAddRespRow {
-                sum: row.try_get(1)?,
+                sum: row.try_get(0)?,
             };
             resp.rows.push(r);
         }

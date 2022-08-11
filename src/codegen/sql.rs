@@ -1,3 +1,4 @@
+use crate::SYMBOL;
 use itertools::Itertools;
 use lib::model::{ProceduralFunction, Type};
 
@@ -17,7 +18,7 @@ impl ToSql for Type {
                 let mut fields = fields
                     .iter()
                     .map(|x| format!("{} {}", x.name, x.ty.to_sql()));
-                format!("table ({})", fields.join(","))
+                format!("table ({})", fields.join(", "))
             }
             Type::DataTable(_, _) => {
                 todo!()
@@ -32,7 +33,6 @@ impl ToSql for Type {
         }
     }
 }
-
 impl ToSql for ProceduralFunction {
     fn to_sql(&self) -> String {
         let params = self
@@ -40,23 +40,24 @@ impl ToSql for ProceduralFunction {
             .iter()
             .map(|x| match &x.ty {
                 Type::Optional(y) => {
-                    format!("a_{} {}=NULL", x.name, y.to_sql())
+                    format!("{}{} {}=NULL", SYMBOL, x.name, y.to_sql())
                 }
-                y => format!("a_{} {}", x.name, y.to_sql()),
+                y => format!("{}{} {}", SYMBOL, x.name, y.to_sql()),
             })
-            .join(",");
+            .join(", ");
         format!(
-            "CREATE OR REPLACE FUNCTION api.{name}({params})
-            RETURNS {returns}
-            LANGUAGE plpgsql
-            AS $$
-                {body}
-            $$;
+            "
+CREATE OR REPLACE FUNCTION api.{name}({params})
+RETURNS {returns}
+LANGUAGE plpgsql
+AS $$
+    {body}
+$$;
         ",
             name = self.name,
             params = params,
             returns = Type::Table("".to_string(), self.returns.clone()).to_sql(),
-            body = self.body
+            body = self.body.replace("$", SYMBOL)
         )
     }
 }

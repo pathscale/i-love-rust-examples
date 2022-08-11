@@ -1,4 +1,5 @@
 use crate::sql::ToSql;
+use crate::SYMBOL;
 use convert_case::{Case, Casing};
 use eyre::*;
 use itertools::Itertools;
@@ -134,19 +135,19 @@ pub fn to_rust_decl(this: &ProceduralFunction) -> String {
         .parameters
         .iter()
         .enumerate()
-        .map(|(i, x)| format!("{} => {}::{}", x.name, i, x.ty.to_sql()));
-    let sql = format!("SELECT * FROM api.{}({});", this.name, arguments.join(","));
+        .map(|(i, x)| format!("{}{} => ${}::{}", SYMBOL, x.name, i + 1, x.ty.to_sql()));
+    let sql = format!("SELECT * FROM api.{}({});", this.name, arguments.join(", "));
     let pg_params = this
         .parameters
         .iter()
         .map(|x| format!("&req.{}", x.name))
-        .join(",");
+        .join(", ");
     let row_getter = this
         .returns
         .iter()
         .enumerate()
-        .map(|(i, x)| format!("{}: row.try_get({})?", x.name, i + 1))
-        .join(",");
+        .map(|(i, x)| format!("{}: row.try_get({})?", x.name, i))
+        .join(",\n");
     format!(
         "pub async fn {name_raw}(&self, req: {name}Req) -> Result<{name}Resp> {{
           let rows = self.client.query(\"{sql}\", &[{pg_params}]).await?;

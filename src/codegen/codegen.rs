@@ -2,19 +2,18 @@ pub mod rust;
 pub mod sql;
 
 use crate::rust::{to_rust_decl, to_rust_type_decl};
+use crate::sql::ToSql;
 use eyre::*;
 use lib::model::*;
 use std::fs::File;
 use std::io::Write;
 use std::process::Command;
+pub const SYMBOL: &str = "a_";
 
 include!("../service/services.rs");
-fn main() -> Result<()> {
-    let services = get_services();
-    for service in services {
-        println!("Service {} {}", service.name, service.id);
-    }
+fn gen_db_rs() -> Result<()> {
     let funcs = get_proc_functions();
+
     let db_filename = "src/gen/database.rs";
     let mut db = File::create(db_filename)?;
 
@@ -50,12 +49,48 @@ impl DatabaseClient {{
     }
     db.flush()?;
     drop(db);
-    assert!(Command::new("rustfmt")
+    let exit = Command::new("rustfmt")
         .arg("--edition")
         .arg("2021")
         .arg(db_filename)
         .spawn()?
-        .wait()?
-        .success());
+        .wait()?;
+    if !exit.success() {
+        bail!("failed to rustfmt {} {:?}", db_filename, exit);
+    }
+    Ok(())
+}
+
+fn gen_db_sql() -> Result<()> {
+    let funcs = get_proc_functions();
+
+    let db_filename = "db/api.sql";
+    let mut db = File::create(db_filename)?;
+    for func in funcs {
+        writeln!(&mut db, "{}", func.to_sql())?;
+    }
+    db.flush()?;
+    drop(db);
+    // let exit = Command::new("sqlformat")
+    //     .arg("--reindent")
+    //     .arg("--keywords")
+    //     .arg("upper")
+    //     .arg("--identifiers")
+    //     .arg("lower")
+    //     .arg(db_filename)
+    //     .spawn()?
+    //     .wait()?;
+    // if !exit.success() {
+    //     bail!("failed to rustfmt {} {:?}", db_filename, exit);
+    // }
+    Ok(())
+}
+fn main() -> Result<()> {
+    let services = get_services();
+    for service in services {
+        println!("Service {} {}", service.name, service.id);
+    }
+    gen_db_sql()?;
+    gen_db_rs()?;
     Ok(())
 }
