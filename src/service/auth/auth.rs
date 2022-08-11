@@ -1,10 +1,10 @@
-use std::sync::Arc;
 use eyre::*;
-use tracing::level_filters::LevelFilter;
-use tracing::*;
 use lib::logger::setup_logs;
 use lib::ws::{JsonVerifier, WebsocketHandler};
-
+use std::sync::Arc;
+use tracing::level_filters::LevelFilter;
+use tracing::*;
+include!("../../gen/database.rs");
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -18,4 +18,3 @@ async fn main() -> Result<()> {
     Arc::new(executor).listen().await?;
     Ok(())
 }
-

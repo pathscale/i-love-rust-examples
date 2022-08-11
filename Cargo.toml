@@ -38,6 +38,7 @@ peroxide = "*"
 chrono = "*"
 static_assertions = "*"
 tokio-postgres = "*"
+convert_case = "0.5.0"
 virtual-table = { git = " https://github.com/nschoellhorn/virtual-table" }
 
 [features]
@@ -49,16 +50,16 @@ path = "src/lib/mod.rs"
 
 [[bin]]
 name = "codegen"
-path = "src/codegen/mod.rs"
+path = "src/codegen/codegen.rs"
 
 [[bin]]
 name = "auth"
-path = "src/service/auth.rs"
+path = "src/service/auth/auth.rs"
 
 [[bin]]
 name = "user"
-path = "src/service/user.rs"
+path = "src/service/user/user.rs"
 
 [[bin]]
 name = "admin"
-path = "src/service/admin.rs"
+path = "src/service/admin/admin.rs"
