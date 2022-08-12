@@ -15,10 +15,8 @@ use tokio::sync::mpsc;
 use tracing::*;
 
 use crate::model::WsEndpointSchema;
-use crate::ws::basics::{
-    AsyncWsResponse, Connection, RequestHandlerRaw, WsRequest, WsResponseError,
-};
-use crate::ws::{request_error_to_resp, JsonVerifier, VerifyProtocol, WsEndpoint};
+use crate::ws::basics::{AsyncWsResponse, Connection, RequestHandlerRaw, WsRequest};
+use crate::ws::{request_error_to_resp, VerifyProtocol, WsEndpoint};
 use tokio::net::TcpStream;
 
 pub struct WsStream {
@@ -179,9 +177,16 @@ impl WebsocketHandler {
                         return wrap_ws_error(Err(err));
                     }
                     WsEvent::Request(req) => {
-                        let obj: Result<WsRequest> = match req {
-                            Message::Text(t) => serde_json::from_str(&t)?,
-                            Message::Binary(b) => serde_json::from_slice(&b)?,
+                        let obj: Result<WsRequest, _> = match req {
+                            Message::Text(t) => {
+                                debug!(?addr, "Handling request {}", t);
+
+                                serde_json::from_str(&t)
+                            }
+                            Message::Binary(b) => {
+                                debug!(?addr, "Handling request <BIN>");
+                                serde_json::from_slice(&b)
+                            }
                             Message::Ping(_) => {
                                 continue;
                             }
@@ -232,6 +237,7 @@ impl WebsocketHandler {
                         match result {
                             AsyncWsResponse::Sync(resp) => {
                                 let j = resp.dump_json();
+                                debug!(?addr, "Sending response: {}", j);
                                 stream.stream.send(Message::Text(j)).await?;
                             }
                             AsyncWsResponse::Async(fut) => {
@@ -239,6 +245,7 @@ impl WebsocketHandler {
                                 tokio::spawn(async move {
                                     let resp = fut.await;
                                     let j = resp.dump_json();
+                                    debug!(?addr, "Sending response: {}", j);
                                     let _ = tx.send(Message::Text(j)).await;
                                 });
                             }
