@@ -18,7 +18,7 @@ use crate::model::WsEndpointSchema;
 use crate::ws::basics::{
     AsyncWsResponse, Connection, RequestHandlerRaw, WsRequest, WsResponseError,
 };
-use crate::ws::{JsonVerifier, VerifyProtocol, WsEndpoint};
+use crate::ws::{request_error_to_resp, JsonVerifier, VerifyProtocol, WsEndpoint};
 use tokio::net::TcpStream;
 
 pub struct WsStream {
@@ -28,7 +28,6 @@ pub struct WsStream {
 pub struct WebsocketHandler {
     pub handlers: HashMap<u32, WsEndpoint>,
     pub connection: HashMap<u32, Arc<WsStream>>,
-    pub verifier: JsonVerifier,
 }
 
 impl WebsocketHandler {
@@ -181,8 +180,8 @@ impl WebsocketHandler {
                     }
                     WsEvent::Request(req) => {
                         let obj: Result<WsRequest> = match req {
-                            Message::Text(t) => self.verifier.try_parse(t.as_bytes()),
-                            Message::Binary(b) => self.verifier.try_parse(b.as_ref()),
+                            Message::Text(t) => serde_json::from_str(&t)?,
+                            Message::Binary(b) => serde_json::from_slice(&b)?,
                             Message::Ping(_) => {
                                 continue;
                             }
@@ -197,17 +196,14 @@ impl WebsocketHandler {
                         };
                         let req = match obj {
                             Ok(req) => req,
-                            Err(x) => {
-                                // request is not valid json
+                            Err(err) => {
                                 stream
                                     .stream
-                                    .send(Message::Text(serde_json::to_string(&WsResponseError {
-                                        method: 0,
-                                        code: 0,
-                                        seq: 0,
-                                        reason: x.to_string(),
-                                    })?))
+                                    .send(Message::Text(serde_json::to_string(
+                                        &request_error_to_resp(0, 0, 0, err),
+                                    )?))
                                     .await?;
+
                                 continue;
                             }
                         };
@@ -217,15 +213,17 @@ impl WebsocketHandler {
                             None => {
                                 stream
                                     .stream
-                                    .send(Message::Text(serde_json::to_string(&WsResponseError {
-                                        method: 0,
-                                        code: 0,
-                                        seq: req.seq,
-                                        reason: format!(
-                                            "Could not find handler for method code {}",
-                                            req.method
+                                    .send(Message::Text(serde_json::to_string(
+                                        &request_error_to_resp(
+                                            req.method,
+                                            400,
+                                            req.seq,
+                                            eyre!(
+                                                "Could not find handler for method code {}",
+                                                req.method
+                                            ),
                                         ),
-                                    })?))
+                                    )?))
                                     .await?;
                                 continue;
                             }
