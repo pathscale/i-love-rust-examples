@@ -164,12 +164,12 @@ impl WebsocketHandler {
                         ProtocolError::ResetWithoutClosingHandshake,
                     )) => {
                         info!(?addr, "Receive side terminated");
-                        stream.stream.close(None).await?;
+                        let _ = stream.stream.close(None).await;
                         break;
                     }
                     WsEvent::TransmitTerminated => {
                         info!(?addr, "Transmit side terminated");
-                        stream.stream.close(None).await?;
+                        let _ = stream.stream.close(None).await;
                         break;
                     }
                     WsEvent::Response(resp) => {
