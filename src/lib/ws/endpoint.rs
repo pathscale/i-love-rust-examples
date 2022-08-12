@@ -1,7 +1,8 @@
+use crate::model::WsEndpointSchema;
+use crate::ws::basics::RequestHandlerRaw;
 use std::sync::Arc;
-use crate::ws::basics::RequestHandler;
 
 pub struct WsEndpoint {
-    pub method: u32,
-    pub handler: Arc<dyn RequestHandler>
+    pub schema: WsEndpointSchema,
+    pub handler: Arc<dyn RequestHandlerRaw>,
 }

@@ -1,4 +1,5 @@
-#[derive(Clone, Debug)]
+use serde::*;
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Field {
     pub name: String,
     pub ty: Type,
@@ -13,7 +14,7 @@ impl Field {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Type {
     Second,
     MilliSecond,
@@ -49,17 +50,45 @@ impl ProceduralFunction {
         }
     }
 }
-
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Service {
     pub name: String,
     pub id: u32,
+    pub endpoints: Vec<WsEndpointSchema>,
 }
 
 impl Service {
-    pub fn new(name: impl Into<String>, id: u32) -> Self {
+    pub fn new(name: impl Into<String>, id: u32, endpoints: Vec<WsEndpointSchema>) -> Self {
         Self {
             name: name.into(),
             id,
+            endpoints,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WsEndpointSchema {
+    pub name: String,
+    pub code: u32,
+    pub parameters: Vec<Field>,
+    pub returns: Vec<Field>,
+    pub json_schema: serde_json::Value,
+}
+
+impl WsEndpointSchema {
+    pub fn new(
+        name: impl Into<String>,
+        code: u32,
+        parameters: Vec<Field>,
+        returns: Vec<Field>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            code,
+            parameters,
+            returns,
+            json_schema: Default::default(),
         }
     }
 }

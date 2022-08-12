@@ -7,7 +7,7 @@ LANGUAGE plpgsql
 AS $$
     
 BEGIN
-    RETURN QUERY SELECT a_a + a_b;
+    RETURN QUERY SELECT a_a + a_b AS sum;
 END
         
 $$;

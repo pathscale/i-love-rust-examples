@@ -11,6 +11,7 @@ use std::process::Command;
 pub const SYMBOL: &str = "a_";
 
 include!("../service/services.rs");
+
 fn gen_db_rs() -> Result<()> {
     let funcs = get_proc_functions();
 
@@ -71,25 +72,18 @@ fn gen_db_sql() -> Result<()> {
     }
     db.flush()?;
     drop(db);
-    // let exit = Command::new("sqlformat")
-    //     .arg("--reindent")
-    //     .arg("--keywords")
-    //     .arg("upper")
-    //     .arg("--identifiers")
-    //     .arg("lower")
-    //     .arg(db_filename)
-    //     .spawn()?
-    //     .wait()?;
-    // if !exit.success() {
-    //     bail!("failed to rustfmt {} {:?}", db_filename, exit);
-    // }
+
+    Ok(())
+}
+fn gen_docs() -> Result<()> {
+    let services = get_services();
+    let docs_filename = "docs/services.json";
+    let mut docs_file = File::create(docs_filename)?;
+    serde_json::to_writer_pretty(&mut docs_file, &services)?;
     Ok(())
 }
 fn main() -> Result<()> {
-    let services = get_services();
-    for service in services {
-        println!("Service {} {}", service.name, service.id);
-    }
+    gen_docs()?;
     gen_db_sql()?;
     gen_db_rs()?;
     Ok(())

@@ -1,10 +1,10 @@
 include!("auth/pg_func.rs");
-
+include!("auth/endpoints.rs");
 pub fn get_services() -> Vec<Service> {
     vec![
-        Service::new("auth", 1),
-        Service::new("user", 2),
-        Service::new("admin", 3),
+        Service::new("auth", 1, get_auth_endpoints()),
+        Service::new("user", 2, vec![]),
+        Service::new("admin", 3, vec![]),
     ]
 }
 

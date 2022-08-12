@@ -1,0 +1,24 @@
+[
+  {
+    "name": "auth",
+    "id": 1,
+    "endpoints": [
+      {
+        "name": "foo",
+        "code": 10010,
+        "parameters": [],
+        "returns": []
+      }
+    ]
+  },
+  {
+    "name": "user",
+    "id": 2,
+    "endpoints": []
+  },
+  {
+    "name": "admin",
+    "id": 3,
+    "endpoints": []
+  }
+]

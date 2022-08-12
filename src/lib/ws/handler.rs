@@ -14,20 +14,36 @@ use std::task::Poll;
 use tokio::sync::mpsc;
 use tracing::*;
 
-use crate::ws::basics::{AsyncWsResponse, Connection, WsRequest, WsResponseError};
+use crate::model::WsEndpointSchema;
+use crate::ws::basics::{
+    AsyncWsResponse, Connection, RequestHandlerRaw, WsRequest, WsResponseError,
+};
 use crate::ws::{JsonVerifier, VerifyProtocol, WsEndpoint};
 use tokio::net::TcpStream;
 
 pub struct WsStream {
     stream: WebSocketStream<Compat<TcpStream>>,
 }
-
+#[derive(Default)]
 pub struct WebsocketHandler {
     pub handlers: HashMap<u32, WsEndpoint>,
     pub connection: HashMap<u32, Arc<WsStream>>,
     pub verifier: JsonVerifier,
 }
 
+impl WebsocketHandler {
+    pub fn new() -> Self {
+        Default::default()
+    }
+    pub fn add_handler_raw(
+        &mut self,
+        schema: WsEndpointSchema,
+        handler: Arc<dyn RequestHandlerRaw>,
+    ) {
+        self.handlers
+            .insert(schema.code, WsEndpoint { schema, handler });
+    }
+}
 struct ReadWrite<'a> {
     send_rx: &'a mut mpsc::Receiver<Message>,
     stream: &'a mut WsStream,
@@ -69,7 +85,7 @@ impl<'a> Future for ReadWrite<'a> {
     }
 }
 
-fn wrap_error<T>(err: Result<T, WsError>) -> Result<T> {
+fn wrap_ws_error<T>(err: Result<T, WsError>) -> Result<T> {
     err.map_err(|x| eyre!(x))
 }
 
@@ -119,7 +135,7 @@ impl WebsocketHandler {
     async fn handle_request(self: Arc<Self>, addr: SocketAddr, stream: TcpStream) {
         let result: Result<(), Error> = async {
             let (tx, mut rx) = mpsc::channel(1);
-            let stream = wrap_error(
+            let stream = wrap_ws_error(
                 async_tungstenite::accept_hdr_async(stream.compat(), VerifyProtocol { tx }).await,
             )?;
             let mut stream = WsStream { stream };
@@ -148,17 +164,20 @@ impl WebsocketHandler {
                         ProtocolError::ResetWithoutClosingHandshake,
                     )) => {
                         info!(?addr, "Receive side terminated");
+                        stream.stream.close(None).await?;
                         break;
                     }
                     WsEvent::TransmitTerminated => {
                         info!(?addr, "Transmit side terminated");
+                        stream.stream.close(None).await?;
                         break;
                     }
                     WsEvent::Response(resp) => {
                         stream.stream.send(resp).await?;
                     }
                     WsEvent::Error(err) => {
-                        wrap_error(Err(err))?;
+                        stream.stream.close(None).await?;
+                        return wrap_ws_error(Err(err));
                     }
                     WsEvent::Request(req) => {
                         let obj: Result<WsRequest> = match req {
@@ -172,6 +191,7 @@ impl WebsocketHandler {
                             }
                             Message::Close(_) => {
                                 info!(?addr, "Receive side terminated");
+                                stream.stream.close(None).await?;
                                 break;
                             }
                         };
