@@ -1,4 +1,2 @@
 #[bench]
-fn noop_bench() {
-
-}
+fn noop_bench() {}

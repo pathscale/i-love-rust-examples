@@ -1,7 +1,7 @@
-use virtual_table::*;
-use std::sync::Arc;
 use std::cell::UnsafeCell;
 use std::sync::atomic::AtomicUsize;
+use std::sync::Arc;
+use virtual_table::*;
 
 pub struct DataFrameSyncBuilder {
     rows: Option<usize>,
@@ -35,7 +35,6 @@ impl DataFrameSyncBuilder {
 
         let frame = Table::create("table".to_owned(), self.definitions);
 
-
         DataFrameSync {
             frame: Arc::new(UnsafeCell::new(frame)),
             index: Default::default(),
@@ -54,9 +53,7 @@ pub struct DataFrameSync {
 
 impl DataFrameSync {
     pub fn update_row(&self, row: Row) {
-        let _ = unsafe {
-            &mut *self.frame.get()
-        }.update_row(row);
+        let _ = unsafe { &mut *self.frame.get() }.update_row(row);
     }
 }
 
