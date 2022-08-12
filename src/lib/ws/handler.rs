@@ -206,7 +206,12 @@ impl WebsocketHandler {
                                 stream
                                     .stream
                                     .send(Message::Text(serde_json::to_string(
-                                        &request_error_to_resp(0, 0, 0, err),
+                                        &request_error_to_resp(
+                                            0,
+                                            StatusCode::BAD_REQUEST.as_u16() as _,
+                                            0,
+                                            err,
+                                        ),
                                     )?))
                                     .await?;
 

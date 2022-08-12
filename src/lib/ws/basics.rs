@@ -199,7 +199,12 @@ impl<T: RequestHandler> RequestHandlerRaw for T {
         let data: T::Request = match serde_json::from_value(req.params) {
             Ok(data) => data,
             Err(err) => {
-                return AsyncWsResponse::Sync(request_error_to_resp(req.method, 400, req.seq, err))
+                return AsyncWsResponse::Sync(request_error_to_resp(
+                    req.method,
+                    StatusCode::BAD_REQUEST.as_u16() as _,
+                    req.seq,
+                    err,
+                ))
             }
         };
         let req1 = WsRequestGeneric {
@@ -254,7 +259,7 @@ impl<T: AsyncRequestHandler> RequestHandler for T {
                         debug!(?log_id, "Request error: {:?}", err);
                         WsResponseGeneric::Error(WsResponseError {
                             method,
-                            code: 400,
+                            code: StatusCode::BAD_REQUEST.as_u16() as _,
                             seq,
                             reason: format!("Request error log_id={}: {}", log_id, err),
                         })
