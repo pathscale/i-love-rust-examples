@@ -222,7 +222,7 @@ impl WebsocketHandler {
                                     .send(Message::Text(serde_json::to_string(
                                         &request_error_to_resp(
                                             req.method,
-                                            StatusCode::BAD_GATEWAY.as_u16() as _,
+                                            StatusCode::NOT_FOUND.as_u16() as _,
                                             req.seq,
                                             eyre!(
                                                 "Could not find handler for method code {}",
