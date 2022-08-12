@@ -10,18 +10,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::{debug, error};
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
-pub struct WsRequest {
-    pub method: u32,
-    pub seq: u32,
-    pub data: serde_json::Value,
-}
-
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct WsRequestGeneric<Req> {
     pub method: u32,
     pub seq: u32,
-    pub data: Req,
+    pub params: Req,
 }
+pub type WsRequest = WsRequestGeneric<serde_json::Value>;
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct WsResponseError {
@@ -47,20 +41,8 @@ pub struct Context {
     pub role: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct WsSuccessResponse {
-    pub method: u32,
-    pub seq: u32,
-    pub params: serde_json::Value,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct WsStreamResponse {
-    pub method: u32,
-    pub stream_seq: u32,
-    pub resource: String,
-    pub data: serde_json::Value,
-}
+pub type WsSuccessResponse = WsSuccessResponseGeneric<serde_json::Value>;
+pub type WsStreamResponse = WsStreamResponseGeneric<serde_json::Value>;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WsForwardedResponse {
@@ -202,7 +184,7 @@ pub trait RequestHandler: Send + Sync {
 
 impl<T: RequestHandler> RequestHandlerRaw for T {
     fn handle(&self, conn: Arc<Connection>, req: WsRequest) -> AsyncWsResponse {
-        let data: T::Request = match serde_json::from_value(req.data) {
+        let data: T::Request = match serde_json::from_value(req.params) {
             Ok(data) => data,
             Err(err) => {
                 return AsyncWsResponse::Sync(request_error_to_resp(req.method, 400, req.seq, err))
@@ -211,7 +193,7 @@ impl<T: RequestHandler> RequestHandlerRaw for T {
         let req1 = WsRequestGeneric {
             method: req.method,
             seq: req.seq,
-            data,
+            params: data,
         };
         let resp = RequestHandler::handle(self, conn, req1);
         match resp {
