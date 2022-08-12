@@ -1,5 +1,6 @@
 use async_compat::{Compat, CompatExt};
 use async_tungstenite::tungstenite::error::ProtocolError;
+use async_tungstenite::tungstenite::http::StatusCode;
 use async_tungstenite::tungstenite::Error as WsError;
 use async_tungstenite::tungstenite::Message;
 use async_tungstenite::WebSocketStream;
@@ -221,7 +222,7 @@ impl WebsocketHandler {
                                     .send(Message::Text(serde_json::to_string(
                                         &request_error_to_resp(
                                             req.method,
-                                            400,
+                                            StatusCode::BAD_GATEWAY.as_u16() as _,
                                             req.seq,
                                             eyre!(
                                                 "Could not find handler for method code {}",

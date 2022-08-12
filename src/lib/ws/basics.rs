@@ -2,6 +2,7 @@ use async_tungstenite::tungstenite::Message;
 use eyre::*;
 use futures::future::BoxFuture;
 use futures::FutureExt;
+use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::*;
 use std::fmt::{Debug, Display};
@@ -148,19 +149,30 @@ pub fn request_error_to_resp<E: Display + Debug>(
         reason: format!("Request error log_id={}: {}", log_id, err),
     })
 }
+
 impl<Resp: Serialize + 'static> AsyncWsResponseGeneric<Resp> {
     pub fn generalize(self, method: u32, seq: u32) -> AsyncWsResponse {
         match self {
             AsyncWsResponseGeneric::Sync(resp) => match resp.generalize() {
                 Ok(ok) => AsyncWsResponse::Sync(ok),
-                Err(err) => AsyncWsResponse::Sync(internal_error_to_resp(method, 500, seq, err)),
+                Err(err) => AsyncWsResponse::Sync(internal_error_to_resp(
+                    method,
+                    StatusCode::INTERNAL_SERVER_ERROR.as_u16() as _,
+                    seq,
+                    err,
+                )),
             },
 
             AsyncWsResponseGeneric::Async(fut) => AsyncWsResponse::Async(
                 async move {
                     match fut.await.generalize() {
                         Ok(ok) => ok,
-                        Err(err) => internal_error_to_resp(method, 500, seq, err),
+                        Err(err) => internal_error_to_resp(
+                            method,
+                            StatusCode::INTERNAL_SERVER_ERROR.as_u16() as _,
+                            seq,
+                            err,
+                        ),
                     }
                 }
                 .boxed(),
@@ -198,9 +210,12 @@ impl<T: RequestHandler> RequestHandlerRaw for T {
         let resp = RequestHandler::handle(self, conn, req1);
         match resp {
             Ok(ok) => ok.generalize(req.method, req.seq),
-            Err(err) => {
-                AsyncWsResponse::Sync(internal_error_to_resp(req.method, 500, req.seq, err))
-            }
+            Err(err) => AsyncWsResponse::Sync(internal_error_to_resp(
+                req.method,
+                StatusCode::INTERNAL_SERVER_ERROR.as_u16() as _,
+                req.seq,
+                err,
+            )),
         }
     }
 }
