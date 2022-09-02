@@ -1,11 +1,9 @@
 mod basics;
-mod endpoint;
-mod handler;
+mod client;
 mod headers;
-mod verify;
+mod server;
 
 pub use basics::*;
-pub use endpoint::*;
-pub use handler::*;
+pub use client::*;
 pub use headers::*;
-pub use verify::*;
+pub use server::*;

@@ -1,0 +1,15 @@
+[Unit]
+Description=user
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+User=jack
+Type=simple
+Restart=always
+RestartSec=1
+ExecStart=/home/jack/coldvaults/bin/user --port=7502 --config=/home/jack/coldvaults/etc/config.json
+
+[Install]
+WantedBy=default.target
+

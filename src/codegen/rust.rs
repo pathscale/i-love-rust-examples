@@ -1,9 +1,8 @@
 use crate::sql::ToSql;
 use crate::SYMBOL;
 use convert_case::{Case, Casing};
-use eyre::*;
 use itertools::Itertools;
-use lib::model::{Field, ProceduralFunction, Type};
+use model::types::*;
 
 pub trait ToRust {
     fn to_rust_ref(&self) -> String;
@@ -27,6 +26,12 @@ impl ToRust for Type {
             Type::Optional(t) => {
                 format!("Option<{}>", t.to_rust_ref())
             }
+            Type::Boolean => "bool".to_owned(),
+            Type::Text => "String".to_owned(),
+            Type::Bytea => "Vec<u8>".to_owned(),
+            Type::UUID => "uuid::Uuid".to_owned(),
+            Type::Inet => "std::net::IpAddr".to_owned(),
+            Type::Enum(name, _) => format!("Enum{}", name.to_case(Case::Pascal),),
         }
     }
 
@@ -53,49 +58,21 @@ impl ToRust for Type {
             Type::Optional(t) => {
                 format!("Option<{}>", t.to_rust_ref())
             }
-        }
-    }
-}
-
-#[allow(unused)]
-mod example {
-    use super::*;
-
-    struct DatabaseMock {
-        client: tokio_postgres::Client,
-    }
-
-    struct FunUserFooReq {
-        arg1: String,
-    }
-
-    struct FunUserFooRespRow {
-        arg1: String,
-    }
-
-    struct FunUserFooResp {
-        rows: Vec<FunUserFooRespRow>,
-    }
-
-    impl DatabaseMock {
-        pub async fn fun_user_foo(&self, req: FunUserFooReq) -> Result<FunUserFooResp> {
-            let rows = self
-                .client
-                .query(
-                    "SELECT * FROM api.fun_user_foo( a_arg1 => $1::String );",
-                    &[&req.arg1],
+            Type::Boolean => "bool".to_owned(),
+            Type::Text => "String".to_owned(),
+            Type::Bytea => "Vec<u8>".to_owned(),
+            Type::UUID => "uuid::Uuid".to_owned(),
+            Type::Inet => "std::net::IpAddr".to_owned(),
+            Type::Enum(name, fields) => {
+                let mut fields = fields
+                    .iter()
+                    .map(|x| format!("{} = {}", x.name.to_case(Case::Pascal), x.value));
+                format!(
+                    "#[derive(Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize)] pub enum Enum{} {{{}}}",
+                    name.to_case(Case::Pascal),
+                    fields.join(",")
                 )
-                .await?;
-            let mut resp = FunUserFooResp {
-                rows: Vec::with_capacity(rows.len()),
-            };
-            for row in rows {
-                let r = FunUserFooRespRow {
-                    arg1: row.try_get(0)?,
-                };
-                resp.rows.push(r);
             }
-            Ok(resp)
         }
     }
 }
@@ -121,6 +98,7 @@ pub fn get_return_type(this: &ProceduralFunction) -> Type {
         )],
     )
 }
+
 pub fn to_rust_type_decl(this: &ProceduralFunction) -> String {
     [
         get_parameter_type(this),

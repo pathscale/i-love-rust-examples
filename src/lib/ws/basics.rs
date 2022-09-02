@@ -1,13 +1,14 @@
-use async_tungstenite::tungstenite::Message;
+use crate::error_code::ErrorCode;
+use crate::log::LogLevel;
+use crate::toolbox::{RequestContext, Toolbox};
 use eyre::*;
-use futures::future::BoxFuture;
-use futures::FutureExt;
+use model::endpoint::EndpointSchema;
 use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::*;
 use std::fmt::{Debug, Display};
+use std::net::IpAddr;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::{debug, error};
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
@@ -31,15 +32,7 @@ pub struct Connection {
     pub connection_id: u32,
     pub user_id: u32,
     pub role: u32,
-    pub send_tx: tokio::sync::mpsc::Sender<Message>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
-pub struct Context {
-    pub log_id: u32,
-    pub connection_id: u32,
-    pub user_id: u32,
-    pub role: u32,
+    pub address: IpAddr,
 }
 
 pub type WsSuccessResponse = WsSuccessResponseGeneric<serde_json::Value>;
@@ -64,124 +57,58 @@ pub struct WsStreamResponseGeneric<Params> {
     pub resource: String,
     pub data: Params,
 }
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct WsLogResponse {
+    pub seq: u32,
+    pub log_id: u64,
+    pub level: LogLevel,
+    pub message: String,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum WsResponse {
-    Immediate(WsSuccessResponse),
-    Stream(WsStreamResponse),
-    Forwarded(WsForwardedResponse),
-    Error(WsResponseError),
-}
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)] // order matters
 pub enum WsResponseGeneric<Resp> {
     Immediate(WsSuccessResponseGeneric<Resp>),
     Stream(WsStreamResponseGeneric<Resp>),
-    Forwarded(WsForwardedResponse),
     Error(WsResponseError),
+    Log(WsLogResponse),
+    Forwarded(WsForwardedResponse),
 }
 
-impl WsResponse {
-    pub fn dump_json(&self) -> String {
-        match self {
-            WsResponse::Immediate(x) => serde_json::to_string(x),
-            WsResponse::Stream(x) => serde_json::to_string(x),
-            WsResponse::Forwarded(x) => serde_json::to_string(x),
-            WsResponse::Error(x) => serde_json::to_string(x),
-        }
-        .expect("Failed to dump json(impossible)")
-    }
-}
-impl<Resp: Serialize> WsResponseGeneric<Resp> {
-    pub fn generalize(self) -> Result<WsResponse> {
-        match self {
-            WsResponseGeneric::Immediate(x) => Ok(WsResponse::Immediate(WsSuccessResponse {
-                method: x.method,
-                seq: x.seq,
-                params: serde_json::to_value(&x.params)?,
-            })),
-            WsResponseGeneric::Stream(x) => Ok(WsResponse::Stream(WsStreamResponse {
-                method: x.method,
-                stream_seq: x.stream_seq,
-                resource: x.resource,
-                data: serde_json::to_value(&x.data)?,
-            })),
-            WsResponseGeneric::Forwarded(x) => Ok(WsResponse::Forwarded(x)),
-            WsResponseGeneric::Error(x) => Ok(WsResponse::Error(x)),
-        }
-    }
-}
-pub enum AsyncWsResponse {
-    Sync(WsResponse),
-    Async(BoxFuture<'static, WsResponse>),
-}
-pub enum AsyncWsResponseGeneric<Resp> {
-    Sync(WsResponseGeneric<Resp>),
-    Async(BoxFuture<'static, WsResponseGeneric<Resp>>),
-}
-pub fn get_log_id() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos() as _
-}
-pub fn internal_error_to_resp(method: u32, code: u32, seq: u32, err: Error) -> WsResponse {
-    let log_id = get_log_id();
+pub type WsResponse = WsResponseGeneric<serde_json::Value>;
+
+pub fn internal_error_to_resp(ctx: &RequestContext, code: ErrorCode, err: Error) -> WsResponse {
+    let log_id = ctx.log_id;
     error!(?log_id, "Internal error: {:?}", err);
     WsResponse::Error(WsResponseError {
-        method,
-        code,
-        seq,
+        method: ctx.method,
+        code: code.to_u32(),
+        seq: ctx.seq,
         reason: format!("Internal error: log_id={}", log_id),
     })
 }
 pub fn request_error_to_resp<E: Display + Debug>(
-    method: u32,
-    code: u32,
-    seq: u32,
+    ctx: &RequestContext,
+    code: ErrorCode,
     err: E,
 ) -> WsResponse {
-    let log_id = get_log_id();
+    let log_id = ctx.log_id;
+
     debug!(?log_id, "Request error: {:?}", err);
     WsResponse::Error(WsResponseError {
-        method,
-        code,
-        seq,
+        method: ctx.method,
+        code: code.to_u32(),
+        seq: ctx.seq,
         reason: format!("Request error log_id={}: {}", log_id, err),
     })
 }
 
-impl<Resp: Serialize + 'static> AsyncWsResponseGeneric<Resp> {
-    pub fn generalize(self, method: u32, seq: u32) -> AsyncWsResponse {
-        match self {
-            AsyncWsResponseGeneric::Sync(resp) => match resp.generalize() {
-                Ok(ok) => AsyncWsResponse::Sync(ok),
-                Err(err) => AsyncWsResponse::Sync(internal_error_to_resp(
-                    method,
-                    StatusCode::INTERNAL_SERVER_ERROR.as_u16() as _,
-                    seq,
-                    err,
-                )),
-            },
-
-            AsyncWsResponseGeneric::Async(fut) => AsyncWsResponse::Async(
-                async move {
-                    match fut.await.generalize() {
-                        Ok(ok) => ok,
-                        Err(err) => internal_error_to_resp(
-                            method,
-                            StatusCode::INTERNAL_SERVER_ERROR.as_u16() as _,
-                            seq,
-                            err,
-                        ),
-                    }
-                }
-                .boxed(),
-            ),
-        }
-    }
+pub struct WsEndpoint {
+    pub schema: EndpointSchema,
+    pub handler: Arc<dyn RequestHandlerErased>,
 }
-pub trait RequestHandlerRaw: Send + Sync {
-    fn handle(&self, conn: Arc<Connection>, req: WsRequest) -> AsyncWsResponse;
+pub trait RequestHandlerErased: Send + Sync {
+    fn handle(&self, toolbox: &Toolbox, ctx: RequestContext, conn: Arc<Connection>, req: WsRequest);
 }
 
 pub trait RequestHandler: Send + Sync {
@@ -189,22 +116,29 @@ pub trait RequestHandler: Send + Sync {
     type Response: Serialize + 'static;
     fn handle(
         &self,
+        toolbox: &Toolbox,
+        ctx: RequestContext,
         conn: Arc<Connection>,
         req: WsRequestGeneric<Self::Request>,
-    ) -> Result<AsyncWsResponseGeneric<Self::Response>>;
+    );
 }
 
-impl<T: RequestHandler> RequestHandlerRaw for T {
-    fn handle(&self, conn: Arc<Connection>, req: WsRequest) -> AsyncWsResponse {
+impl<T: RequestHandler> RequestHandlerErased for T {
+    fn handle(
+        &self,
+        toolbox: &Toolbox,
+        ctx: RequestContext,
+        conn: Arc<Connection>,
+        req: WsRequest,
+    ) {
         let data: T::Request = match serde_json::from_value(req.params) {
             Ok(data) => data,
             Err(err) => {
-                return AsyncWsResponse::Sync(request_error_to_resp(
-                    req.method,
-                    StatusCode::BAD_REQUEST.as_u16() as _,
-                    req.seq,
-                    err,
-                ))
+                toolbox.send(
+                    &ctx,
+                    request_error_to_resp(&ctx, StatusCode::BAD_REQUEST.into(), err),
+                );
+                return;
             }
         };
         let req1 = WsRequestGeneric {
@@ -212,61 +146,6 @@ impl<T: RequestHandler> RequestHandlerRaw for T {
             seq: req.seq,
             params: data,
         };
-        let resp = RequestHandler::handle(self, conn, req1);
-        match resp {
-            Ok(ok) => ok.generalize(req.method, req.seq),
-            Err(err) => AsyncWsResponse::Sync(internal_error_to_resp(
-                req.method,
-                StatusCode::INTERNAL_SERVER_ERROR.as_u16() as _,
-                req.seq,
-                err,
-            )),
-        }
-    }
-}
-
-pub trait AsyncRequestHandler: Send + Sync {
-    type Request: DeserializeOwned;
-    type Response: Serialize + 'static;
-    fn handle(
-        &self,
-        conn: Arc<Connection>,
-        req: WsRequestGeneric<Self::Request>,
-    ) -> BoxFuture<'static, Result<Self::Response>>;
-}
-impl<T: AsyncRequestHandler> RequestHandler for T {
-    type Request = T::Request;
-    type Response = T::Response;
-
-    fn handle(
-        &self,
-        conn: Arc<Connection>,
-        req: WsRequestGeneric<Self::Request>,
-    ) -> Result<AsyncWsResponseGeneric<Self::Response>> {
-        let method = req.method;
-        let seq = req.seq;
-        let resp = AsyncRequestHandler::handle(self, conn, req);
-        Ok(AsyncWsResponseGeneric::Async(
-            async move {
-                match resp.await {
-                    Ok(ok) => WsResponseGeneric::Immediate(WsSuccessResponseGeneric {
-                        method,
-                        seq,
-                        params: ok,
-                    }),
-                    Err(err) => {
-                        let log_id = get_log_id();
-                        debug!(?log_id, "Request error: {:?}", err);
-                        WsResponseGeneric::Error(WsResponseError {
-                            method,
-                            code: StatusCode::BAD_REQUEST.as_u16() as _,
-                            seq,
-                            reason: format!("Request error log_id={}: {}", log_id, err),
-                        })
-                    }
-                }
-            }
-            .boxed(),
-        ))
+        RequestHandler::handle(self, toolbox, ctx, conn, req1)
     }
 }

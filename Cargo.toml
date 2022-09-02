@@ -1,14 +1,14 @@
 [package]
-name = "rust_example"
+name = "coldvaults"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "3.2.6", features = ["derive"] }
+clap = { version = "3.2.6", features = ["derive", "env"] }
 eyre = "0.6.1"
-serde = { version = "1.0.136", features = ["derive"] }
+serde = { version = "1.0.144", features = ["derive"] }
 regex = "1.5.6"
 libc = "0.2.126"
 tracing = "0.1.35"
@@ -38,19 +38,23 @@ peroxide = "*"
 chrono = "*"
 static_assertions = "*"
 tokio-postgres = "*"
-convert_case = "0.5.0"
-virtual-table = { git = " https://github.com/nschoellhorn/virtual-table" }
 
+deadpool-postgres = "*"
+model = { path = "src/model" }
+gen = { path = "src/gen" }
+lib = { path = "src/lib" }
+sha2 = "*"
+virtual-table = { git = "https://github.com/nschoellhorn/virtual-table" }
+
+[dependencies.uuid]
+version = "1.1.2"
+features = [
+    "v4",                # Lets you generate random UUIDs
+    "fast-rng",          # Use a faster (but still sufficiently random) RNG
+    "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
+]
 [features]
-enable_logging = []
-
-[lib]
-name = "lib"
-path = "src/lib/mod.rs"
-
-[[bin]]
-name = "codegen"
-path = "src/codegen/codegen.rs"
+default = []
 
 [[bin]]
 name = "auth"

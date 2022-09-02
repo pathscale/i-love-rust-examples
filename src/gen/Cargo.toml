@@ -1,0 +1,24 @@
+[package]
+name = "gen"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "gen"
+path = "lib.rs"
+
+[dependencies]
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+eyre = "*"
+convert_case = "*"
+itertools = "*"
+postgres-types = { version = "*", features = ["derive"] }
+tokio-postgres = { version = "*", features = ["with-uuid-1"] }
+uuid = "*"
+lib = { path = "../lib" }
+bytes = "*"
+[build-dependencies]
+codegen = { path = "../codegen" }

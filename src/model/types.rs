@@ -15,17 +15,36 @@ impl Field {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EnumVariant {
+    pub name: String,
+    pub value: i32,
+}
+impl EnumVariant {
+    pub fn new(name: impl Into<String>, value: i32) -> Self {
+        Self {
+            name: name.into(),
+            value,
+        }
+    }
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Type {
     Second,
     MilliSecond,
     Date,
     Int,
     BigInt,
+    Boolean,
+    Text,
+    Bytea,
+    UUID,
+    Inet,
     Table(String, Vec<Field>),
     DataTable(String, Vec<Field>),
     Vec(Box<Type>),
     Unit,
     Optional(Box<Type>),
+    Enum(String, Vec<EnumVariant>),
 }
 #[derive(Clone, Debug)]
 pub struct ProceduralFunction {
@@ -47,48 +66,6 @@ impl ProceduralFunction {
             parameters,
             returns,
             body: body.into(),
-        }
-    }
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Service {
-    pub name: String,
-    pub id: u32,
-    pub endpoints: Vec<WsEndpointSchema>,
-}
-
-impl Service {
-    pub fn new(name: impl Into<String>, id: u32, endpoints: Vec<WsEndpointSchema>) -> Self {
-        Self {
-            name: name.into(),
-            id,
-            endpoints,
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct WsEndpointSchema {
-    pub name: String,
-    pub code: u32,
-    pub parameters: Vec<Field>,
-    pub returns: Vec<Field>,
-    pub json_schema: serde_json::Value,
-}
-
-impl WsEndpointSchema {
-    pub fn new(
-        name: impl Into<String>,
-        code: u32,
-        parameters: Vec<Field>,
-        returns: Vec<Field>,
-    ) -> Self {
-        Self {
-            name: name.into(),
-            code,
-            parameters,
-            returns,
-            json_schema: Default::default(),
         }
     }
 }
