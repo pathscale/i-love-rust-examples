@@ -5,7 +5,7 @@ use tracing::level_filters::LevelFilter;
 use tracing_log::LogTracer;
 use tracing_subscriber::{fmt, EnvFilter};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum LogLevel {
     Off,
     Trace,
@@ -47,6 +47,7 @@ impl Default for LogLevel {
     }
 }
 pub fn setup_logs(log_level: LogLevel) -> Result<()> {
+    println!("Log level: {:?}", log_level);
     LogTracer::init().context("Cannot setup_logs")?;
     let filter = EnvFilter::from_default_env()
         .add_directive(log_level.as_level_filter().into())
@@ -59,6 +60,7 @@ pub fn setup_logs(log_level: LogLevel) -> Result<()> {
         .with_thread_names(true)
         .with_env_filter(filter)
         .finish();
+
     tracing::subscriber::set_global_default(subscriber).context("Cannot setup_logs")?;
     log_panics::init();
     Ok(())

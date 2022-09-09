@@ -144,7 +144,7 @@ impl DbClient {
     }
 }
 pub struct FunAuthAuthorizeReq {
-    pub user_public_id: i64,
+    pub username: String,
     pub token: uuid::Uuid,
     pub service: EnumService,
     pub device_id: String,
@@ -152,7 +152,7 @@ pub struct FunAuthAuthorizeReq {
     pub ip_address: std::net::IpAddr,
 }
 pub struct FunAuthAuthorizeRespRow {
-    pub user_id: std::net::IpAddr,
+    pub user_id: i64,
     pub role: EnumRole,
 }
 pub struct FunAuthAuthorizeResp {
@@ -164,7 +164,7 @@ impl DbClient {
         &self,
         req: FunAuthAuthorizeReq,
     ) -> Result<FunAuthAuthorizeResp> {
-        let rows = self.client.query("SELECT * FROM api.fun_auth_authorize(a_user_public_id => $1::bigint, a_token => $2::uuid, a_service => $3::tbl.enum_service, a_device_id => $4::text, a_device_os => $5::text, a_ip_address => $6::inet);", &[&req.user_public_id, &req.token, &req.service, &req.device_id, &req.device_os, &req.ip_address]).await?;
+        let rows = self.client.query("SELECT * FROM api.fun_auth_authorize(a_username => $1::text, a_token => $2::uuid, a_service => $3::tbl.enum_service, a_device_id => $4::text, a_device_os => $5::text, a_ip_address => $6::inet);", &[&req.username, &req.token, &req.service, &req.device_id, &req.device_os, &req.ip_address]).await?;
         let mut resp = FunAuthAuthorizeResp {
             rows: Vec::with_capacity(rows.len()),
         };

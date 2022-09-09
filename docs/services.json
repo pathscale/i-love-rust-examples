@@ -4,14 +4,14 @@
     "id": 1,
     "endpoints": [
       {
-        "name": "login",
+        "name": "Login",
         "code": 10020,
         "parameters": [],
         "returns": [],
         "json_schema": null
       },
       {
-        "name": "signup",
+        "name": "Signup",
         "code": 10010,
         "parameters": [],
         "returns": [],

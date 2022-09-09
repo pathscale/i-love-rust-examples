@@ -3,6 +3,7 @@ use deadpool_postgres::*;
 use eyre::*;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Row, ToStatement};
+use tracing::*;
 
 pub type DatabaseConfig = deadpool_postgres::Config;
 #[derive(Clone)]
@@ -23,6 +24,11 @@ impl SimpleDbClient {
 }
 
 pub async fn connect_to_database(config: DatabaseConfig) -> Result<SimpleDbClient> {
+    info!(
+        "Connecting to database {}:{}",
+        config.host.as_ref().unwrap(),
+        config.port.as_ref().unwrap()
+    );
     let pool = config.create_pool(Some(Runtime::Tokio1), NoTls)?;
     Ok(SimpleDbClient { pool })
 }

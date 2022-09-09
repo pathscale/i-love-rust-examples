@@ -1,6 +1,7 @@
 pub mod rust;
 pub mod service;
 pub mod sql;
+
 use crate::rust::{to_rust_decl, to_rust_type_decl, ToRust};
 use crate::service::get_systemd_service;
 use crate::sql::ToSql;
@@ -11,6 +12,7 @@ use model::endpoint::*;
 use model::service::*;
 use model::types::*;
 use serde::*;
+use std::collections::HashMap;
 use std::env;
 use std::fs::{create_dir_all, File};
 use std::io::Write;
@@ -188,13 +190,26 @@ pub fn gen_docs(root: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn gen_systemd_services(root: &str, app_name: &str, user: &str, port: u16) -> Result<()> {
+pub fn gen_systemd_services(
+    root: &str,
+    app_name: &str,
+    user: &str,
+    host: HashMap<String, String>,
+) -> Result<()> {
     create_dir_all(format!("{}/etc/systemd", root))?;
     let services = get_services();
     for srv in services {
-        let service_filename = format!("{}/etc/systemd/{}.service", root, srv.name);
+        let service_filename = format!("{}/etc/systemd/{}_{}.service", root, app_name, srv.name);
         let mut service_file = File::create(&service_filename)?;
-        let v = get_systemd_service(app_name, &srv.name, user, port + srv.id);
+        let v = get_systemd_service(
+            app_name,
+            &srv.name,
+            user,
+            &host
+                .get(&srv.name)
+                .ok_or_else(|| eyre!("Could not find key {}", srv.name))?,
+            443,
+        );
         write!(&mut service_file, "{}", v)?;
     }
     Ok(())
@@ -218,6 +233,15 @@ pub fn main() -> Result<()> {
     gen_model_sql(root)?;
     gen_db_sql(root)?;
     gen_db_rs(&dir)?;
-    gen_systemd_services(root, "coldvaults", "jack", 7500)?;
+    gen_systemd_services(
+        root,
+        "coldvaults",
+        "cv",
+        HashMap::from([
+            ("auth".to_owned(), "auth.defi.digital".to_owned()),
+            ("user".to_owned(), "cv.defi.digital".to_owned()),
+            ("admin".to_owned(), "admin.defi.digital".to_owned()),
+        ]),
+    )?;
     Ok(())
 }

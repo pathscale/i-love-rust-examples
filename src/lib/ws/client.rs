@@ -1,18 +1,20 @@
 use crate::error_code::ErrorCode;
 use crate::log::LogLevel;
 use crate::ws::{WsLogResponse, WsRequestGeneric, WsResponse, WsResponseGeneric};
-use async_tungstenite::tokio::{connect_async, ConnectStream};
-use async_tungstenite::tungstenite::Message;
-use async_tungstenite::WebSocketStream;
 use eyre::*;
 use futures::SinkExt;
 use futures::StreamExt;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use tokio::net::TcpStream;
+use tokio_tungstenite::connect_async;
+use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::MaybeTlsStream;
+use tokio_tungstenite::WebSocketStream;
 use tracing::*;
 
 pub struct WsClient {
-    stream: WebSocketStream<ConnectStream>,
+    stream: WebSocketStream<MaybeTlsStream<TcpStream>>,
     seq: u32,
 }
 impl WsClient {
@@ -26,7 +28,7 @@ impl WsClient {
     pub async fn send_req(&mut self, method: u32, params: impl Serialize) -> Result<()> {
         self.seq += 1;
         self.stream
-            .send(async_tungstenite::tungstenite::Message::Text(
+            .send(tokio_tungstenite::tungstenite::Message::Text(
                 serde_json::to_string(&WsRequestGeneric {
                     method,
                     seq: self.seq,

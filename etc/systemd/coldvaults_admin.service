@@ -1,0 +1,16 @@
+[Unit]
+Description=coldvaults admin
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+User=cv
+Type=simple
+Restart=always
+RestartSec=1
+WorkingDirectory=/home/cv/coldvaults
+ExecStart=/usr/bin/bash -c 'cargo run --bin admin --release --host=admin.defi.digital --port=443 --config=etc/config.json'
+
+[Install]
+WantedBy=default.target
+

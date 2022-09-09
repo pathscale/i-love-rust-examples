@@ -34,10 +34,10 @@ pub struct AuthLoginResp {
 }
 
 pub fn endpoint_auth_signup() -> EndpointSchema {
-    EndpointSchema::new("signup", 10010, vec![], vec![])
+    EndpointSchema::new("Signup", 10010, vec![], vec![])
 }
 pub fn endpoint_auth_login() -> EndpointSchema {
-    EndpointSchema::new("login", 10020, vec![], vec![])
+    EndpointSchema::new("Login", 10020, vec![], vec![])
 }
 pub fn get_auth_endpoints() -> Vec<EndpointSchema> {
     vec![endpoint_auth_login(), endpoint_auth_signup()]

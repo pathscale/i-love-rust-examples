@@ -21,11 +21,11 @@ BEGIN
   IF (a_agreed_tos = FALSE OR a_agreed_privacy = FALSE) THEN
     RAISE SQLSTATE 'R000X'; -- ConsentMissing
   ELSEIF ((SELECT pkey_id
-           FROM tbl.usr
+           FROM tbl.user
            WHERE LOWER(username) = LOWER(a_username)) IS NOT NULL) THEN
     RAISE SQLSTATE 'R000Z'; -- UsernameAlreadyRegistered
   END IF;
-  INSERT INTO tbl.usr (public_id,
+  INSERT INTO tbl.user (public_id,
                        username,
                        password_hash,
                        password_salt,
@@ -75,13 +75,13 @@ BEGIN
             a_username NOTNULL AND a_password_hash NOTNULL AND a_service_code NOTNULL);
 
     -- Looking up the user.
-    SELECT pkey_id, usr.public_id, is_blocked, (password_hash = a_password_hash), "role"
+    SELECT pkey_id, u.public_id, is_blocked, (password_hash = a_password_hash), "role"
     INTO _user_id, _user_public_id, is_blocked_, is_password_ok_, _role
-    FROM tbl.usr usr
+    FROM tbl.user u
     WHERE username = a_username;
 
     -- Log the login attempt.
-    INSERT INTO tbl.login_attempt(fkey_usr, username, password_hash, ip_address,
+    INSERT INTO tbl.login_attempt(fkey_user, username, password_hash, ip_address,
                                   is_password_ok)
     VALUES (_user_id, a_username, a_password_hash, a_ip_address, is_password_ok_);
 
@@ -100,17 +100,17 @@ BEGIN
         RAISE SQLSTATE 'R000S'; -- InvalidRole
     END IF;
 
-    UPDATE tbl.usr -- ping
+    UPDATE tbl.user -- ping
     SET last_ip      = a_ip_address,
         last_login   = EXTRACT(EPOCH FROM (NOW()))::bigint,
         logins_count = logins_count + 1
     WHERE pkey_id = _user_id;
 
     IF a_service_code & api.USER_SERVICE() > 0 THEN
-        UPDATE tbl.usr SET user_device_id = a_device_id WHERE pkey_id = _user_id;
+        UPDATE tbl.user SET user_device_id = a_device_id WHERE pkey_id = _user_id;
     END IF;
     IF a_service_code & api.ADMIN_SERVICE() > 0 THEN
-        UPDATE tbl.usr SET admin_device_id = a_device_id WHERE pkey_id = _user_id;
+        UPDATE tbl.user SET admin_device_id = a_device_id WHERE pkey_id = _user_id;
     END IF;
     RETURN QUERY SELECT _user_id, _user_public_id;
 END
@@ -127,9 +127,9 @@ BEGIN
   ASSERT (a_username NOTNULL);
 
   -- Looking up the user.
-  SELECT pkey_id, usr.password_salt
+  SELECT pkey_id, u.password_salt
   INTO user_id, salt
-  FROM tbl.usr usr
+  FROM tbl.user u
   WHERE username = a_username;
 
   IF (user_id ISNULL) THEN
@@ -155,7 +155,7 @@ BEGIN
   ASSERT (a_user_id NOTNULL AND a_service_code NOTNULL AND a_user_token NOTNULL AND
           a_admin_token NOTNULL);
   -- Looking up the user.
-  SELECT is_blocked INTO is_blocked_ FROM tbl.usr WHERE pkey_id = a_user_id;
+  SELECT is_blocked INTO is_blocked_ FROM tbl.user WHERE pkey_id = a_user_id;
   IF (is_blocked_ ISNULL) THEN
     RAISE SQLSTATE 'R0007'; -- UnknownUser
   ELSIF (is_blocked_) THEN
@@ -164,12 +164,12 @@ BEGIN
 
   -- Setting up the token.
   IF a_service_code & api.USER_SERVICE() > 0 THEN
-    UPDATE tbl.usr
+    UPDATE tbl.user
     SET user_token = a_user_token
     WHERE pkey_id = a_user_id;
   END IF;
   IF a_service_code & api.ADMIN_SERVICE() > 0 THEN
-    UPDATE tbl.usr
+    UPDATE tbl.user
     SET admin_token = a_admin_token
     WHERE pkey_id = a_user_id;
   END IF;
@@ -182,7 +182,7 @@ END
         ProceduralFunction::new(
             "fun_auth_authorize",
             vec![
-                Field::new("user_public_id", Type::BigInt),
+                Field::new("username", Type::Text),
                 Field::new("token", Type::UUID),
                 Field::new("service", Type::Enum("service".to_owned(), vec![])),
                 Field::new("device_id", Type::Text),
@@ -190,7 +190,7 @@ END
                 Field::new("ip_address", Type::Inet),
             ],
             vec![
-                Field::new("user_id", Type::Inet),
+                Field::new("user_id", Type::BigInt),
                 Field::new("role", Type::Enum("role".to_owned(), vec![])),
             ],
             r#"
@@ -202,7 +202,7 @@ DECLARE
   role_         tbl.enum_role;
   
 BEGIN
-  ASSERT (a_user_public_id NOTNULL AND a_token NOTNULL AND a_service NOTNULL AND
+  ASSERT (a_username NOTNULL AND a_token NOTNULL AND a_service NOTNULL AND
           a_device_id NOTNULL AND a_device_os NOTNULL);
 
   -- Looking up the user
@@ -210,13 +210,13 @@ BEGIN
     WHEN 'user'
       THEN SELECT pkey_id, role, (user_token = a_token)
            INTO user_id_, role_, is_token_ok_
-           FROM tbl.usr
-           WHERE public_id = a_user_public_id;
+           FROM tbl.user
+           WHERE username = a_username;
     WHEN 'admin'
       THEN SELECT pkey_id, role, (admin_token = a_token)
            INTO user_id_, role_, is_token_ok_
-           FROM tbl.usr
-           WHERE public_id = a_user_public_id;
+           FROM tbl.user
+           WHERE username = a_username;
     END CASE;
   GET DIAGNOSTICS rc_ := ROW_COUNT;
   IF (rc_ <> 1) THEN
@@ -224,7 +224,7 @@ BEGIN
   END IF;
 
   -- Log the authorization attempt
-  INSERT INTO tbl.authorization_attempt(fkey_usr, ip_address, is_token_ok)
+  INSERT INTO tbl.authorization_attempt(fkey_user, ip_address, is_token_ok)
   VALUES (user_id_, a_ip_address, is_token_ok_);
 
   -- Validating the token
@@ -235,12 +235,12 @@ BEGIN
 -- Updating the device info
   CASE srv_
     WHEN 'user'
-      THEN UPDATE tbl.usr
+      THEN UPDATE tbl.user
            SET user_device_id = a_device_id
            WHERE pkey_id = user_id_
              AND user_token = a_token;
     WHEN 'admin'
-      THEN UPDATE tbl.usr
+      THEN UPDATE tbl.user
            SET admin_device_id = a_device_id
            WHERE pkey_id = user_id_
              AND admin_token = a_token;
@@ -274,11 +274,11 @@ BEGIN
   -- Looking up the user.
   SELECT pkey_id, is_blocked, (password_hash = a_old_password_hash)
   INTO user_id_, is_blocked_, is_password_ok_
-  FROM tbl.usr usr
+  FROM tbl.user u
   WHERE username = a_username;
 
   -- Log the login attempt.
-  INSERT INTO tbl.login_attempt(fkey_usr, username, password_hash, ip_address,
+  INSERT INTO tbl.login_attempt(fkey_user, username, password_hash, ip_address,
                                 device_id, device_os, is_password_ok)
   VALUES (user_id_, a_username, a_old_password_hash, a_ip_address, a_device_id,
           a_device_os, is_password_ok_);
@@ -292,7 +292,7 @@ BEGIN
     END IF;
     ASSERT (a_old_password_hash <> a_new_password_hash);
 
-    UPDATE tbl.usr
+    UPDATE tbl.user
     SET password_hash = a_new_password_hash
     WHERE username = a_username;
   ELSE
@@ -334,8 +334,8 @@ DECLARE
   rc_ integer;
 BEGIN
   ASSERT (a_user_id NOTNULL AND a_question_ids NOTNULL AND a_answers NOTNULL);
-  DELETE FROM tbl.recovery_question WHERE fkey_usr = a_user_id;
-  INSERT INTO tbl.recovery_question(fkey_usr, fkey_question, answer)
+  DELETE FROM tbl.recovery_question WHERE fkey_user = a_user_id;
+  INSERT INTO tbl.recovery_question(fkey_user, fkey_question, answer)
   VALUES (a_user_id, UNNEST(a_question_ids), UNNEST(a_answers));
   GET DIAGNOSTICS rc_ := ROW_COUNT;
   ASSERT (rc_ > 0);
@@ -360,9 +360,9 @@ BEGIN
           a_ip_address NOTNULL);
   SELECT pkey_id, is_blocked
   INTO user_id_, is_blocked_
-  FROM tbl.usr
+  FROM tbl.user
   WHERE username = LOWER(a_username);
-  INSERT INTO tbl.login_attempt(fkey_usr, username, password_hash, ip_address,
+  INSERT INTO tbl.login_attempt(fkey_user, username, password_hash, ip_address,
                                 device_id, device_os)
   VALUES (user_id_, a_username, '', a_ip_address, a_device_id, a_device_os);
   IF (user_id_ ISNULL) THEN
@@ -388,7 +388,7 @@ BEGIN
                       qd.content
                FROM tbl.recovery_question_data qd
                       JOIN tbl.recovery_question q ON qd.pkey_id = q.fkey_question
-               WHERE q.fkey_usr = a_user_id;
+               WHERE q.fkey_user = a_user_id;
 END
             "#,
         ),
@@ -406,7 +406,7 @@ END
 DECLARE
   correct_answers_ varchar[];
 BEGIN
-  IF (SELECT COUNT(pkey_id) FROM tbl.recovery_question WHERE fkey_usr = a_user_id) !=
+  IF (SELECT COUNT(pkey_id) FROM tbl.recovery_question WHERE fkey_user = a_user_id) !=
      CARDINALITY(a_question_ids) THEN
     RAISE SQLSTATE 'R0011'; -- MustSubmitAllRecoveryQuestions
   END IF;
@@ -416,12 +416,12 @@ BEGIN
         FROM tbl.recovery_question q
                JOIN UNNEST(a_question_ids) WITH ORDINALITY t(fkey_question, ord)
                     USING (fkey_question)
-        WHERE fkey_usr = a_user_id
+        WHERE fkey_user = a_user_id
         ORDER BY t.ord) result;
   IF a_answers != correct_answers_ THEN
     RAISE SQLSTATE 'R000T'; -- WrongRecoveryAnswers
   END IF;
-  UPDATE tbl.usr
+  UPDATE tbl.user
   SET password_reset_token = a_password_reset_token,
       reset_token_valid    = a_token_valid
   WHERE pkey_id = a_user_id;
@@ -442,7 +442,7 @@ DECLARE
   rc_ integer;
 BEGIN
   ASSERT (a_user_id NOTNULL AND a_new_password_hash NOTNULL AND a_reset_token NOTNULL);
-  UPDATE tbl.usr
+  UPDATE tbl.user
   SET password_hash        = a_new_password_hash,
       password_salt        = a_new_password_salt,
       password_reset_token = NULL,

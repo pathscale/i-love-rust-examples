@@ -1,21 +1,25 @@
 use crate::database::SimpleDbClient;
-use async_compat::{Compat, CompatExt};
-use async_tungstenite::tungstenite::error::ProtocolError;
-use async_tungstenite::tungstenite::http::StatusCode;
-use async_tungstenite::tungstenite::Error as WsError;
-use async_tungstenite::tungstenite::Message;
-use async_tungstenite::WebSocketStream;
 use dashmap::DashMap;
 use eyre::*;
 use futures::stream::{SplitSink, SplitStream};
 use futures::SinkExt;
 use futures::StreamExt;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::BufReader;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::mpsc;
+use tokio_rustls::TlsAcceptor;
+use tokio_tungstenite::tungstenite::error::ProtocolError;
+use tokio_tungstenite::tungstenite::http::StatusCode;
+use tokio_tungstenite::tungstenite::Error as WsError;
+use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::WebSocketStream;
 use tracing::*;
 
+use crate::config::AppConfig;
 use crate::toolbox::{RequestContext, Toolbox};
 use crate::utils::get_log_id;
 use crate::ws::basics::{Connection, RequestHandlerErased, WsRequest};
@@ -24,10 +28,9 @@ use crate::ws::{
     WsResponse,
 };
 use model::endpoint::EndpointSchema;
-use tokio::net::TcpStream;
 
-pub struct WsStream {
-    ws_sink: SplitSink<WebSocketStream<Compat<TcpStream>>, Message>,
+pub struct WsStream<S> {
+    ws_sink: SplitSink<WebSocketStream<S>, Message>,
     conn: Arc<Connection>,
 }
 
@@ -38,9 +41,20 @@ pub struct WsMessage {
 pub struct WebsocketServer {
     pub auth_controller: Arc<dyn AuthController>,
     pub handlers: HashMap<u32, WsEndpoint>,
-    pub connection: DashMap<u32, WsStream>,
     pub message_receiver: Option<mpsc::Receiver<WsMessage>>,
     pub toolbox: Toolbox,
+    pub config: AppConfig,
+}
+#[derive(Default)]
+pub struct WebsocketStates<S> {
+    pub connection: DashMap<u32, WsStream<S>>,
+}
+impl<S> WebsocketStates<S> {
+    pub fn new() -> Self {
+        Self {
+            connection: Default::default(),
+        }
+    }
 }
 impl Default for WebsocketServer {
     fn default() -> Self {
@@ -49,9 +63,9 @@ impl Default for WebsocketServer {
         Self {
             auth_controller: Arc::new(SimpleAuthContoller),
             handlers: Default::default(),
-            connection: Default::default(),
             message_receiver: Some(msg_rx),
             toolbox: Toolbox::new(msg_tx),
+            config: Default::default(),
         }
     }
 }
@@ -60,8 +74,14 @@ fn wrap_ws_error<T>(err: Result<T, WsError>) -> Result<T> {
 }
 
 impl WebsocketServer {
-    pub fn new() -> Self {
-        Default::default()
+    pub fn new(config: AppConfig) -> Self {
+        Self {
+            config,
+            ..Default::default()
+        }
+    }
+    pub fn add_auth_controller(&mut self, controller: Arc<dyn AuthController>) {
+        self.auth_controller = controller;
     }
     pub fn add_database(&mut self, db: SimpleDbClient) {
         self.toolbox.set_db(db);
@@ -88,11 +108,17 @@ impl WebsocketServer {
             );
         }
     }
-    async fn handle_request(self: Arc<Self>, addr: SocketAddr, stream: TcpStream) {
-        let result: Result<()> = async {
+    async fn handle_request<S: AsyncRead + AsyncWrite + Unpin + Send + 'static>(
+        self: Arc<Self>,
+        addr: SocketAddr,
+        states: Arc<WebsocketStates<S>>,
+        stream: S,
+    ) {
+        let result: Result<()> = async move {
             let (tx, mut rx) = mpsc::channel(1);
+
             let stream = wrap_ws_error(
-                async_tungstenite::accept_hdr_async(stream.compat(), VerifyProtocol { tx }).await,
+                tokio_tungstenite::accept_hdr_async(stream, VerifyProtocol { tx }).await,
             )?;
             let mut conn = Connection {
                 connection_id: 0,
@@ -113,8 +139,8 @@ impl WebsocketServer {
                 conn: Arc::new(conn),
             };
             let conn = Arc::clone(&stream.conn);
-            self.connection.insert(conn.connection_id, stream);
-            tokio::spawn(Arc::clone(&self).recv_msg(conn, ws_stream));
+            states.connection.insert(conn.connection_id, stream);
+            tokio::spawn(Arc::clone(&self).recv_msg(conn, states, ws_stream));
             Ok(())
         }
         .await;
@@ -122,10 +148,12 @@ impl WebsocketServer {
             error!(?addr, "Error while processing {:?}", err)
         }
     }
-    pub async fn recv_msg(
+
+    pub async fn recv_msg<S: AsyncRead + AsyncWrite + Unpin + Send + 'static>(
         self: Arc<Self>,
         conn: Arc<Connection>,
-        mut reader: SplitStream<WebSocketStream<Compat<TcpStream>>>,
+        states: Arc<WebsocketStates<S>>,
+        mut reader: SplitStream<WebSocketStream<S>>,
     ) {
         let addr = conn.address;
         let context = RequestContext {
@@ -157,6 +185,10 @@ impl WebsocketServer {
                         Message::Close(_) => {
                             info!(?addr, "Receive side terminated");
                             break;
+                        }
+                        _ => {
+                            warn!(?addr, "Strange pattern {:?}", req);
+                            continue;
                         }
                     };
                     let req = match obj {
@@ -207,12 +239,16 @@ impl WebsocketServer {
                 }
             }
         }
-        self.connection.remove(&context.connection_id);
+        states.connection.remove(&context.connection_id);
         info!(?addr, "Connection closed");
     }
-    pub async fn send_msg(self: Arc<Self>, mut message_receiver: mpsc::Receiver<WsMessage>) {
+    pub async fn send_msg<S: AsyncRead + AsyncWrite + Unpin + Send + 'static>(
+        self: Arc<Self>,
+        states: Arc<WebsocketStates<S>>,
+        mut message_receiver: mpsc::Receiver<WsMessage>,
+    ) {
         while let Some(msg) = message_receiver.recv().await {
-            let conn = self.connection.get_mut(&msg.connection_id);
+            let conn = states.connection.get_mut(&msg.connection_id);
             if let Some(mut conn) = conn {
                 let self1 = &msg.message;
                 let result = conn
@@ -229,17 +265,88 @@ impl WebsocketServer {
             }
         }
     }
-    pub async fn listen(mut self, addr: &str) -> Result<()> {
-        info!("Listening on {}", addr);
-        let listener = tokio::net::TcpListener::bind(addr).await?;
+    pub async fn listen(self) -> Result<()> {
+        if self.config.pub_cert.is_empty() && self.config.priv_cert.is_empty() {
+            self.listen_tcp().await
+        } else if !self.config.pub_cert.is_empty() && !self.config.priv_cert.is_empty() {
+            self.listen_tls().await
+        } else {
+            bail!("pub_cert and priv_cert should be both set or unset")
+        }
+    }
+    async fn listen_tcp(mut self) -> Result<()> {
+        let addr = format!("{}:{}", self.config.host, self.config.port);
+        info!("{} listening on {}(tcp)", self.config.name, addr);
+
         let message_receiver = self.message_receiver.take().unwrap();
         let this = Arc::new(self);
-        tokio::spawn(Arc::clone(&this).send_msg(message_receiver));
+        let states = Arc::new(WebsocketStates::new());
+        tokio::spawn(Arc::clone(&this).send_msg(Arc::clone(&states), message_receiver));
+        let listener = tokio::net::TcpListener::bind(addr).await?;
         loop {
             let (stream, addr) = listener.accept().await?;
 
             info!("Accepted stream from {}", addr);
-            tokio::spawn(Arc::clone(&this).handle_request(addr, stream));
+            tokio::spawn(Arc::clone(&this).handle_request(addr, Arc::clone(&states), stream));
         }
     }
+    async fn listen_tls(mut self) -> Result<()> {
+        let addr = format!("{}:{}", self.config.host, self.config.port);
+        info!("{} listening on {}(tls)", self.config.name, addr);
+        // Build TLS configuration.
+        let tls_cfg = {
+            // Load public certificate.
+            let certs = load_certs(&self.config.pub_cert)?;
+            // Load private key.
+            let key = load_private_key(&self.config.priv_cert)?;
+            // Do not use client certificate authentication.
+            let mut cfg = rustls::ServerConfig::builder()
+                .with_safe_defaults()
+                .with_no_client_auth()
+                .with_single_cert(certs, key)?;
+            // Configure ALPN to accept HTTP/2, HTTP/1.1 in that order.
+            cfg.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+            Arc::new(cfg)
+        };
+        let message_receiver = self.message_receiver.take().unwrap();
+        let this = Arc::new(self);
+        let states = Arc::new(WebsocketStates::new());
+        tokio::spawn(Arc::clone(&this).send_msg(Arc::clone(&states), message_receiver));
+        let listener = tokio::net::TcpListener::bind(addr).await?;
+        let acceptor = TlsAcceptor::from(tls_cfg);
+        loop {
+            let (stream, addr) = listener.accept().await?;
+            let stream = acceptor.accept(stream).await?;
+
+            info!("Accepted stream from {}", addr);
+            tokio::spawn(Arc::clone(&this).handle_request(addr, Arc::clone(&states), stream));
+        }
+    }
+}
+// Load public certificate from file.
+fn load_certs(filename: &str) -> Result<Vec<rustls::Certificate>> {
+    // Open certificate file.
+    let certfile = File::open(filename).map_err(|e| eyre!("failed to open {}: {}", filename, e))?;
+    let mut reader = BufReader::new(certfile);
+
+    // Load and return certificate.
+    let certs =
+        rustls_pemfile::certs(&mut reader).map_err(|_| eyre!("failed to load certificate"))?;
+    Ok(certs.into_iter().map(rustls::Certificate).collect())
+}
+
+// Load private key from file.
+fn load_private_key(filename: &str) -> Result<rustls::PrivateKey> {
+    // Open keyfile.
+    let keyfile = File::open(filename).map_err(|e| eyre!("failed to open {}: {}", filename, e))?;
+    let mut reader = BufReader::new(keyfile);
+
+    // Load and return a single private key.
+    let keys = rustls_pemfile::rsa_private_keys(&mut reader)
+        .map_err(|_| eyre!("failed to load private key"))?;
+    if keys.len() != 1 {
+        bail!("expected a single private key");
+    }
+
+    Ok(rustls::PrivateKey(keys[0].clone()))
 }
