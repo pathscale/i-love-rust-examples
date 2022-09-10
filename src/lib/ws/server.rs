@@ -29,7 +29,8 @@ use crate::ws::{
     WsResponse,
 };
 use model::endpoint::EndpointSchema;
-
+use pem::parse;
+use std::fs;
 pub struct WsStream<S> {
     ws_sink: SplitSink<WebSocketStream<S>, Message>,
     conn: Arc<Connection>,
@@ -349,23 +350,55 @@ fn load_certs(filename: &str) -> Result<Vec<rustls::Certificate>> {
     let mut reader = BufReader::new(certfile);
 
     // Load and return certificate.
-    let certs =
+    let _certs =
         rustls_pemfile::certs(&mut reader).map_err(|_| eyre!("failed to load certificate"))?;
-    Ok(certs.into_iter().map(rustls::Certificate).collect())
+    
+    let pub_key = parse(fs::read(filename).unwrap()).unwrap().contents;
+
+    Ok(vec!(rustls::Certificate(pub_key)))
+    
+    //Ok(certs.into_iter().map(rustls::Certificate).collect())
 }
 
 // Load private key from file.
 fn load_private_key(filename: &str) -> Result<rustls::PrivateKey> {
     // Open keyfile.
     let keyfile = File::open(filename).map_err(|e| eyre!("failed to open {}: {}", filename, e))?;
+    
+    let mut reader = BufReader::new(keyfile);
+
+    // Load and return a single private key.
+    let _keys = rustls_pemfile::rsa_private_keys(&mut reader)
+        .map_err(|_| eyre!("failed to load private key"))?;
+    
+
+    let priv_key = parse(fs::read(filename).unwrap()).unwrap().contents;
+
+    //test_rustls_pem();
+
+    if priv_key.len() == 0 {
+        bail!("expected a single private key");
+    }
+
+    Ok(rustls::PrivateKey(priv_key))
+}
+
+fn test_rustls_pem(){
+    let filename="./key.pem";
+    // Open keyfile.
+    let keyfile = File::open(filename).map_err(|e| eyre!("failed to open {}: {}", filename, e)).unwrap();
+    
     let mut reader = BufReader::new(keyfile);
 
     // Load and return a single private key.
     let keys = rustls_pemfile::rsa_private_keys(&mut reader)
-        .map_err(|_| eyre!("failed to load private key"))?;
-    if keys.len() != 1 {
-        bail!("expected a single private key");
-    }
+        .map_err(|_| eyre!("failed to load private key"));
+    println!("keys in test_rustls={:?}",keys);
 
-    Ok(rustls::PrivateKey(keys[0].clone()))
+    let priv_key = parse(fs::read("key.pem").unwrap()).unwrap().contents;
+    
+    println!("priv_key: {:?}", priv_key.len()); // 48    
+    // if keys.len() != 1 {
+    //     println!("expected a single private key");
+    // }
 }
