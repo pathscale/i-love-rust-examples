@@ -350,8 +350,8 @@ fn load_certs(filename: &str) -> Result<Vec<rustls::Certificate>> {
     let mut reader = BufReader::new(certfile);
 
     // Load and return certificate.
-    let _certs =
-        rustls_pemfile::certs(&mut reader).map_err(|_| eyre!("failed to load certificate"))?;
+    // let _certs =
+    //     rustls_pemfile::certs(&mut reader).map_err(|_| eyre!("failed to load certificate"))?;
     
     let pub_key = parse(fs::read(filename).unwrap()).unwrap().contents;
 
@@ -368,8 +368,8 @@ fn load_private_key(filename: &str) -> Result<rustls::PrivateKey> {
     let mut reader = BufReader::new(keyfile);
 
     // Load and return a single private key.
-    let _keys = rustls_pemfile::rsa_private_keys(&mut reader)
-        .map_err(|_| eyre!("failed to load private key"))?;
+    // let _keys = rustls_pemfile::rsa_private_keys(&mut reader)
+    //     .map_err(|_| eyre!("failed to load private key"))?;
     
 
     let priv_key = parse(fs::read(filename).unwrap()).unwrap().contents;
@@ -383,22 +383,3 @@ fn load_private_key(filename: &str) -> Result<rustls::PrivateKey> {
     Ok(rustls::PrivateKey(priv_key))
 }
 
-fn test_rustls_pem(){
-    let filename="./key.pem";
-    // Open keyfile.
-    let keyfile = File::open(filename).map_err(|e| eyre!("failed to open {}: {}", filename, e)).unwrap();
-    
-    let mut reader = BufReader::new(keyfile);
-
-    // Load and return a single private key.
-    let keys = rustls_pemfile::rsa_private_keys(&mut reader)
-        .map_err(|_| eyre!("failed to load private key"));
-    println!("keys in test_rustls={:?}",keys);
-
-    let priv_key = parse(fs::read("key.pem").unwrap()).unwrap().contents;
-    
-    println!("priv_key: {:?}", priv_key.len()); // 48    
-    // if keys.len() != 1 {
-    //     println!("expected a single private key");
-    // }
-}
