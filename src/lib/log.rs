@@ -52,9 +52,9 @@ pub fn setup_logs(log_level: LogLevel) -> Result<()> {
     let filter = EnvFilter::from_default_env()
         .add_directive(log_level.as_level_filter().into())
         .add_directive("tungstenite::protocol=debug".parse()?)
-        .add_directive("async_tungstenite=debug".parse()?)
         .add_directive("tokio_postgres::connection=debug".parse()?)
-        .add_directive("tokio_util::codec::framed_impl=debug".parse()?);
+        .add_directive("tokio_util::codec::framed_impl=debug".parse()?)
+        .add_directive("tokio_tungstenite=debug".parse()?);
 
     let subscriber = fmt()
         .with_thread_names(true)

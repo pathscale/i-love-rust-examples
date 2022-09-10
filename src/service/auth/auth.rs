@@ -1,19 +1,14 @@
-mod method;
-
 use crate::endpoints::{endpoint_auth_login, endpoint_auth_signup};
 use crate::method::{LoginHandler, SignupHandler};
 use eyre::*;
 use lib::config::load_config;
 use lib::database::connect_to_database;
 use lib::log::setup_logs;
-use lib::ws::WebsocketServer;
-use model::endpoint::*;
-use serde::*;
+use lib::ws::{EndpointAuthController, WebsocketServer};
+use std::sync::Arc;
 
-pub mod endpoints {
-    use super::*;
-    include!("endpoints.rs");
-}
+pub mod endpoints;
+pub mod method;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -23,8 +18,10 @@ async fn main() -> Result<()> {
     let db = connect_to_database(config.db).await?;
     let mut server = WebsocketServer::new(config.app);
     server.add_database(db);
-    server.add_handler(endpoint_auth_signup(), SignupHandler);
-    server.add_handler(endpoint_auth_login(), LoginHandler);
+    let auth_controller = Arc::new(EndpointAuthController::new(server.get_toolbox()));
+    auth_controller.add_auth_endpoint(endpoint_auth_login(), LoginHandler);
+    auth_controller.add_auth_endpoint(endpoint_auth_signup(), SignupHandler);
+    server.add_auth_controller(auth_controller.clone());
     server.listen().await?;
     Ok(())
 }

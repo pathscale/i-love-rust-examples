@@ -8,10 +8,7 @@ use crate::sql::ToSql;
 use convert_case::{Case, Casing};
 use eyre::*;
 use itertools::Itertools;
-use model::endpoint::*;
-use model::service::*;
 use model::types::*;
-use serde::*;
 use std::collections::HashMap;
 use std::env;
 use std::fs::{create_dir_all, File};
@@ -19,9 +16,11 @@ use std::io::Write;
 use std::process::Command;
 
 pub const SYMBOL: &str = "a_";
+#[path = "../service/services.rs"]
+mod services;
 
-include!("../service/services.rs");
-include!("../service/enums.rs");
+#[path = "../service/enums.rs"]
+mod enums;
 
 pub fn gen_model_rs(dir: &str) -> Result<()> {
     let db_filename = format!("{}/model.rs", dir);
@@ -33,10 +32,10 @@ pub fn gen_model_rs(dir: &str) -> Result<()> {
         r#"
 use tokio_postgres::types::*;
 use serde::*;
-
+use num_derive::FromPrimitive;
     "#
     )?;
-    for e in get_enums() {
+    for e in enums::get_enums() {
         write!(&mut f, "{}", e.to_rust_decl())?;
     }
     f.flush()?;
@@ -45,7 +44,7 @@ use serde::*;
         "{}",
         Type::Enum(
             "service".to_owned(),
-            get_services()
+            services::get_services()
                 .into_iter()
                 .map(|x| EnumVariant::new(x.name, x.id as _))
                 .collect()
@@ -62,12 +61,11 @@ pub fn gen_model_sql(root: &str) -> Result<()> {
     let db_filename = format!("{}/db/model.sql", root);
     let mut f = File::create(db_filename)?;
 
-    write!(&mut f, "{}", r#"CREATE SCHEMA IF NOT EXISTS tbl;"#)?;
-    let mut enums = get_enums();
+    let mut enums = enums::get_enums();
 
     enums.push(Type::Enum(
         "service".to_owned(),
-        get_services()
+        services::get_services()
             .into_iter()
             .map(|x| EnumVariant::new(x.name, x.id as _))
             .collect(),
@@ -78,7 +76,7 @@ pub fn gen_model_sql(root: &str) -> Result<()> {
             Type::Enum(name, field) => {
                 writeln!(
                     &mut f,
-                    "CREATE TYPE tbl.enum_{} AS ENUM ({});",
+                    "CREATE TYPE enum_{} AS ENUM ({});",
                     name,
                     field
                         .into_iter()
@@ -106,7 +104,7 @@ pub fn rustfmt(f: &str) -> Result<()> {
     Ok(())
 }
 pub fn gen_db_rs(dir: &str) -> Result<()> {
-    let funcs = get_proc_functions();
+    let funcs = services::get_proc_functions();
 
     let db_filename = format!("{}/database.rs", dir);
     let mut db = File::create(&db_filename)?;
@@ -118,6 +116,7 @@ pub fn gen_db_rs(dir: &str) -> Result<()> {
 use eyre::*;
 use lib::database::*;
 use crate::model::*;
+
 #[derive(Clone)]
 pub struct DbClient {
     client: SimpleDbClient
@@ -156,7 +155,7 @@ impl DbClient {{
 }
 
 pub fn gen_db_sql(root: &str) -> Result<()> {
-    let funcs = get_proc_functions();
+    let funcs = services::get_proc_functions();
 
     let db_filename = format!("{}/db/api.sql", root);
     let mut f = File::create(&db_filename)?;
@@ -164,7 +163,7 @@ pub fn gen_db_sql(root: &str) -> Result<()> {
     for func in funcs {
         writeln!(&mut f, "{}", func.to_sql())?;
     }
-    for srv in get_services() {
+    for srv in services::get_services() {
         writeln!(
             &mut f,
             "{}",
@@ -183,7 +182,7 @@ pub fn gen_db_sql(root: &str) -> Result<()> {
     Ok(())
 }
 pub fn gen_docs(root: &str) -> Result<()> {
-    let services = get_services();
+    let services = services::get_services();
     let docs_filename = format!("{}/docs/services.json", root);
     let mut docs_file = File::create(docs_filename)?;
     serde_json::to_writer_pretty(&mut docs_file, &services)?;
@@ -197,7 +196,7 @@ pub fn gen_systemd_services(
     host: HashMap<String, String>,
 ) -> Result<()> {
     create_dir_all(format!("{}/etc/systemd", root))?;
-    let services = get_services();
+    let services = services::get_services();
     for srv in services {
         let service_filename = format!("{}/etc/systemd/{}_{}.service", root, app_name, srv.name);
         let mut service_file = File::create(&service_filename)?;

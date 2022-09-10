@@ -1,3 +1,6 @@
+use model::endpoint::*;
+use serde::*;
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct FooRequest {}

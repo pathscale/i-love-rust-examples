@@ -1,3 +1,5 @@
+use model::types::*;
+
 pub fn get_enums() -> Vec<Type> {
     vec![
         Type::Enum(

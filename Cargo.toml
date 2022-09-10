@@ -24,9 +24,7 @@ crossbeam = "*"
 nonzero_ext = "*"
 reqwest = { version = "*", features = ["serde_json", "json"] }
 governor = "*"
-#tungstenite = "*" # included in async-tungstenite
-async-tungstenite = { version = "*", features = ["tokio-rustls"] }
-async-compat = "*"
+tokio-tungstenite = { version = "*", features = [] }
 itertools = "0.10.3"
 futures = "*"
 tracing-log = "*"
@@ -38,6 +36,11 @@ peroxide = "*"
 chrono = "*"
 static_assertions = "*"
 tokio-postgres = "*"
+tokio-tls = "*"
+rustls = "0.20.6"
+num = "0.4"
+num-derive = "0.3"
+num-traits = "0.2"
 
 deadpool-postgres = "*"
 model = { path = "src/model" }
@@ -55,6 +58,9 @@ features = [
 ]
 [features]
 default = []
+
+[lib]
+path = "src/service/lib.rs"
 
 [[bin]]
 name = "auth"

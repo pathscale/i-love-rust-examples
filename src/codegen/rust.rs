@@ -64,11 +64,17 @@ impl ToRust for Type {
             Type::UUID => "uuid::Uuid".to_owned(),
             Type::Inet => "std::net::IpAddr".to_owned(),
             Type::Enum(name, fields) => {
-                let mut fields = fields
-                    .iter()
-                    .map(|x| format!("{} = {}", x.name.to_case(Case::Pascal), x.value));
+                let mut fields = fields.iter().map(|x| {
+                    format!(
+                        r#"#[postgres(name = "{}")]{} = {}"#,
+                        x.name,
+                        x.name.to_case(Case::Pascal),
+                        x.value
+                    )
+                });
                 format!(
-                    "#[derive(Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize)] pub enum Enum{} {{{}}}",
+                    r#"#[derive(Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize, FromPrimitive)] #[postgres(name = "enum_{}")]pub enum Enum{} {{{}}}"#,
+                    name,
                     name.to_case(Case::Pascal),
                     fields.join(",")
                 )

@@ -4,10 +4,12 @@ use crate::ws::{WsLogResponse, WsRequestGeneric, WsResponse, WsResponseGeneric};
 use eyre::*;
 use futures::SinkExt;
 use futures::StreamExt;
+use reqwest::header::HeaderValue;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio::net::TcpStream;
 use tokio_tungstenite::connect_async;
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::MaybeTlsStream;
 use tokio_tungstenite::WebSocketStream;
@@ -18,8 +20,12 @@ pub struct WsClient {
     seq: u32,
 }
 impl WsClient {
-    pub async fn new(connect_addr: &str) -> Result<Self> {
-        let (ws_stream, _) = connect_async(connect_addr).await?;
+    pub async fn new(connect_addr: &str, header: &str) -> Result<Self> {
+        let mut req = <&str as IntoClientRequest>::into_client_request(connect_addr)?;
+        req.headers_mut()
+            .insert("Sec-WebSocket-Protocol", HeaderValue::from_str(header)?);
+
+        let (ws_stream, _) = connect_async(req).await?;
         Ok(Self {
             stream: ws_stream,
             seq: 0,

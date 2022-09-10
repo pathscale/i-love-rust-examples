@@ -11,6 +11,10 @@ RestartSec=1
 WorkingDirectory=/home/cv/coldvaults
 ExecStart=/usr/bin/bash -c 'cargo run --bin admin --release --host=admin.defi.digital --port=443 --config=etc/config.json'
 
+StandardError=file:/home/cv/coldvaults/log/coldvaults_admin.log
+StandardOutput=file:/home/cv/coldvaults/log/coldvaults_admin.log
+StandardInput=null
+
 [Install]
 WantedBy=default.target
 

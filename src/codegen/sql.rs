@@ -35,7 +35,7 @@ impl ToSql for Type {
             Type::Bytea => "bytea".to_owned(),
             Type::UUID => "uuid".to_owned(),
             Type::Inet => "inet".to_owned(),
-            Type::Enum(e, _) => format!("tbl.enum_{}", e),
+            Type::Enum(e, _) => format!("enum_{}", e),
         }
     }
 }
@@ -46,7 +46,7 @@ impl ToSql for ProceduralFunction {
             .iter()
             .map(|x| match &x.ty {
                 Type::Optional(y) => {
-                    format!("{}{} {}=NULL", SYMBOL, x.name, y.to_sql())
+                    format!("{}{} {} DEFAULT NULL", SYMBOL, x.name, y.to_sql())
                 }
                 y => format!("{}{} {}", SYMBOL, x.name, y.to_sql()),
             })

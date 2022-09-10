@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::net::SocketAddr;
+use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::mpsc;
@@ -21,13 +22,14 @@ use tracing::*;
 
 use crate::config::AppConfig;
 use crate::toolbox::{RequestContext, Toolbox};
-use crate::utils::get_log_id;
+use crate::utils::{get_conn_id, get_log_id};
 use crate::ws::basics::{Connection, RequestHandlerErased, WsRequest};
 use crate::ws::{
     request_error_to_resp, AuthController, SimpleAuthContoller, VerifyProtocol, WsEndpoint,
     WsResponse,
 };
 use model::endpoint::EndpointSchema;
+use std::sync::atomic::Ordering;
 
 pub struct WsStream<S> {
     ws_sink: SplitSink<WebSocketStream<S>, Message>,
@@ -86,6 +88,9 @@ impl WebsocketServer {
     pub fn add_database(&mut self, db: SimpleDbClient) {
         self.toolbox.set_db(db);
     }
+    pub fn get_toolbox(&self) -> Toolbox {
+        self.toolbox.clone()
+    }
     pub fn add_handler(
         &mut self,
         schema: EndpointSchema,
@@ -116,27 +121,42 @@ impl WebsocketServer {
     ) {
         let result: Result<()> = async move {
             let (tx, mut rx) = mpsc::channel(1);
-
-            let stream = wrap_ws_error(
-                tokio_tungstenite::accept_hdr_async(stream, VerifyProtocol { tx }).await,
-            )?;
-            let mut conn = Connection {
-                connection_id: 0,
-                user_id: 0,
-                role: 0,
+            let hs = tokio_tungstenite::accept_hdr_async(stream, VerifyProtocol { tx }).await;
+            let mut stream = wrap_ws_error(hs)?;
+            let conn = Arc::new(Connection {
+                connection_id: get_conn_id(),
+                user_id: AtomicU32::new(0),
+                role: AtomicU32::new(0),
                 address: addr.ip(),
-            };
+                log_id: get_log_id(),
+            });
             let headers = rx
                 .recv()
                 .await
                 .ok_or_else(|| eyre!("Failed to receive ws headers"))?;
-            conn = self.auth_controller.auth(headers, conn).await?;
-
+            let auth_result = self.auth_controller.auth(headers, Arc::clone(&conn)).await;
+            if let Err(err) = auth_result {
+                let resp = request_error_to_resp(
+                    &RequestContext {
+                        connection_id: conn.connection_id,
+                        user_id: 0,
+                        seq: 0,
+                        method: 0,
+                        log_id: conn.log_id,
+                    },
+                    StatusCode::BAD_REQUEST.into(),
+                    err,
+                );
+                let _ = stream
+                    .send(Message::Text(serde_json::to_string(&resp)?))
+                    .await;
+                return Ok(());
+            }
             let (ws_sink, ws_stream) = stream.split();
 
             let stream = WsStream {
                 ws_sink: ws_sink,
-                conn: Arc::new(conn),
+                conn,
             };
             let conn = Arc::clone(&stream.conn);
             states.connection.insert(conn.connection_id, stream);
@@ -158,10 +178,10 @@ impl WebsocketServer {
         let addr = conn.address;
         let context = RequestContext {
             connection_id: conn.connection_id,
-            user_id: conn.user_id,
+            user_id: conn.user_id.load(Ordering::Relaxed),
             seq: 0,
             method: 0,
-            log_id: get_log_id(),
+            log_id: conn.log_id,
         };
         while let Some(msg) = reader.next().await {
             match msg {

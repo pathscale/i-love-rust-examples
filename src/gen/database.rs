@@ -1,6 +1,7 @@
 use crate::model::*;
 use eyre::*;
 use lib::database::*;
+
 #[derive(Clone)]
 pub struct DbClient {
     client: SimpleDbClient,
@@ -52,7 +53,6 @@ impl DbClient {
 pub struct FunAuthAuthenticateReq {
     pub username: String,
     pub password_hash: Vec<u8>,
-    pub password_salt: Vec<u8>,
     pub service_code: i32,
     pub device_id: String,
     pub device_os: String,
@@ -71,7 +71,7 @@ impl DbClient {
         &self,
         req: FunAuthAuthenticateReq,
     ) -> Result<FunAuthAuthenticateResp> {
-        let rows = self.client.query("SELECT * FROM api.fun_auth_authenticate(a_username => $1::text, a_password_hash => $2::bytea, a_password_salt => $3::bytea, a_service_code => $4::int, a_device_id => $5::text, a_device_os => $6::text, a_ip_address => $7::inet);", &[&req.username, &req.password_hash, &req.password_salt, &req.service_code, &req.device_id, &req.device_os, &req.ip_address]).await?;
+        let rows = self.client.query("SELECT * FROM api.fun_auth_authenticate(a_username => $1::text, a_password_hash => $2::bytea, a_service_code => $3::int, a_device_id => $4::text, a_device_os => $5::text, a_ip_address => $6::inet);", &[&req.username, &req.password_hash, &req.service_code, &req.device_id, &req.device_os, &req.ip_address]).await?;
         let mut resp = FunAuthAuthenticateResp {
             rows: Vec::with_capacity(rows.len()),
         };
@@ -164,7 +164,7 @@ impl DbClient {
         &self,
         req: FunAuthAuthorizeReq,
     ) -> Result<FunAuthAuthorizeResp> {
-        let rows = self.client.query("SELECT * FROM api.fun_auth_authorize(a_username => $1::text, a_token => $2::uuid, a_service => $3::tbl.enum_service, a_device_id => $4::text, a_device_os => $5::text, a_ip_address => $6::inet);", &[&req.username, &req.token, &req.service, &req.device_id, &req.device_os, &req.ip_address]).await?;
+        let rows = self.client.query("SELECT * FROM api.fun_auth_authorize(a_username => $1::text, a_token => $2::uuid, a_service => $3::enum_service, a_device_id => $4::text, a_device_os => $5::text, a_ip_address => $6::inet);", &[&req.username, &req.token, &req.service, &req.device_id, &req.device_os, &req.ip_address]).await?;
         let mut resp = FunAuthAuthorizeResp {
             rows: Vec::with_capacity(rows.len()),
         };

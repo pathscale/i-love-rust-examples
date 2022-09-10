@@ -19,6 +19,10 @@ RestartSec=1
 WorkingDirectory=/home/{user}/{app_name}
 ExecStart=/usr/bin/bash -c 'cargo run --bin {service_name} --release --host={host} --port={port} --config=etc/config.json'
 
+StandardError=file:/home/{user}/{app_name}/log/{app_name}_{service_name}.log
+StandardOutput=file:/home/{user}/{app_name}/log/{app_name}_{service_name}.log
+StandardInput=null
+
 [Install]
 WantedBy=default.target
 

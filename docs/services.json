@@ -6,14 +6,89 @@
       {
         "name": "Login",
         "code": 10020,
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "username",
+            "ty": "Text"
+          },
+          {
+            "name": "password",
+            "ty": "Text"
+          },
+          {
+            "name": "service_code",
+            "ty": "Int"
+          },
+          {
+            "name": "device_id",
+            "ty": "Text"
+          },
+          {
+            "name": "device_os",
+            "ty": "Text"
+          }
+        ],
         "returns": [],
         "json_schema": null
       },
       {
         "name": "Signup",
         "code": 10010,
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "username",
+            "ty": "Text"
+          },
+          {
+            "name": "password",
+            "ty": "Text"
+          },
+          {
+            "name": "agreed_tos",
+            "ty": "Boolean"
+          },
+          {
+            "name": "agreed_privacy",
+            "ty": "Boolean"
+          }
+        ],
+        "returns": [
+          {
+            "name": "username",
+            "ty": "Text"
+          },
+          {
+            "name": "user_public_id",
+            "ty": "BigInt"
+          }
+        ],
+        "json_schema": null
+      },
+      {
+        "name": "Authorize",
+        "code": 10030,
+        "parameters": [
+          {
+            "name": "username",
+            "ty": "Text"
+          },
+          {
+            "name": "token",
+            "ty": "Text"
+          },
+          {
+            "name": "service_code",
+            "ty": "Int"
+          },
+          {
+            "name": "device_id",
+            "ty": "Text"
+          },
+          {
+            "name": "device_os",
+            "ty": "Text"
+          }
+        ],
         "returns": [],
         "json_schema": null
       }
@@ -22,7 +97,15 @@
   {
     "name": "user",
     "id": 2,
-    "endpoints": []
+    "endpoints": [
+      {
+        "name": "Foo",
+        "code": 20010,
+        "parameters": [],
+        "returns": [],
+        "json_schema": null
+      }
+    ]
   },
   {
     "name": "admin",

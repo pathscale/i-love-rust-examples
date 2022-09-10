@@ -1,22 +1,16 @@
-mod method;
-
 use crate::endpoints::endpoint_user_foo;
 use crate::method::FooHandler;
+use coldvaults::endpoints::endpoint_auth_authorize;
+use coldvaults::method::AuthorizeHandler;
 use eyre::*;
 use lib::config::load_config;
 use lib::database::connect_to_database;
 use lib::log::setup_logs;
-use lib::ws::WebsocketServer;
-use model::endpoint::*;
-use serde::*;
+use lib::ws::{EndpointAuthController, WebsocketServer};
 use std::sync::Arc;
-use tracing::*;
 
-pub mod endpoints {
-    use super::*;
-    include!("endpoints.rs");
-}
-include!("../auth/header.rs");
+pub mod endpoints;
+pub mod method;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -25,10 +19,10 @@ async fn main() -> Result<()> {
 
     let db = connect_to_database(config.db).await?;
     let mut server = WebsocketServer::new(config.app);
-    server.add_auth_controller(Arc::new(LoginAuthController {
-        db: db.clone().into(),
-    }));
     server.add_database(db);
+    let auth_controller = Arc::new(EndpointAuthController::new(server.get_toolbox()));
+    auth_controller.add_auth_endpoint(endpoint_auth_authorize(), AuthorizeHandler);
+    server.add_auth_controller(auth_controller);
     server.add_handler(endpoint_user_foo(), FooHandler);
     server.listen().await?;
     Ok(())

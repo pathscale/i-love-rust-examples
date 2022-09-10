@@ -1,3 +1,5 @@
+use model::types::*;
+
 pub fn get_auth_pg_func() -> Vec<ProceduralFunction> {
     vec![
         ProceduralFunction::new(
@@ -53,7 +55,6 @@ END
             vec![
                 Field::new("username", Type::Text),
                 Field::new("password_hash", Type::Bytea),
-                Field::new("password_salt", Type::Bytea),
                 Field::new("service_code", Type::Int),
                 Field::new("device_id", Type::Text),
                 Field::new("device_os", Type::Text),
@@ -69,13 +70,13 @@ DECLARE
     is_password_ok_ boolean;
     _user_id        bigint;
     _user_public_id bigint;
-    _role           tbl.enum_role;
+    _role           enum_role;
 BEGIN
     ASSERT (a_ip_address NOTNULL AND a_device_id NOTNULL AND a_device_os NOTNULL AND
             a_username NOTNULL AND a_password_hash NOTNULL AND a_service_code NOTNULL);
 
     -- Looking up the user.
-    SELECT pkey_id, u.public_id, is_blocked, (password_hash = a_password_hash), "role"
+    SELECT pkey_id, u.public_id, is_blocked, (password_hash = a_password_hash), u.role
     INTO _user_id, _user_public_id, is_blocked_, is_password_ok_, _role
     FROM tbl.user u
     WHERE username = a_username;
@@ -93,23 +94,22 @@ BEGIN
         RAISE SQLSTATE 'R0008'; -- BlockedUser
     ELSIF (NOT is_password_ok_) THEN
         RAISE SQLSTATE 'R0009';
-    ELSEIF (_role NOT IN ('administrator', 'developer') AND
-            a_service_code & api.ADMIN_SERVICE() > 0) OR
-           (_role NOT IN ('user', 'administrator', 'developer') AND
-            a_service_code & api.USER_SERVICE() > 0) THEN
+    ELSEIF (_role NOT IN ('admin', 'developer') AND
+            a_service_code = (SELECT code FROM api.ADMIN_SERVICE())) OR
+           (_role NOT IN ('user', 'admin', 'developer') AND
+            a_service_code = (SELECT code FROM api.USER_SERVICE())) THEN
         RAISE SQLSTATE 'R000S'; -- InvalidRole
     END IF;
-
     UPDATE tbl.user -- ping
     SET last_ip      = a_ip_address,
         last_login   = EXTRACT(EPOCH FROM (NOW()))::bigint,
         logins_count = logins_count + 1
     WHERE pkey_id = _user_id;
 
-    IF a_service_code & api.USER_SERVICE() > 0 THEN
+    IF a_service_code = api.USER_SERVICE() THEN
         UPDATE tbl.user SET user_device_id = a_device_id WHERE pkey_id = _user_id;
     END IF;
-    IF a_service_code & api.ADMIN_SERVICE() > 0 THEN
+    IF a_service_code = api.ADMIN_SERVICE() THEN
         UPDATE tbl.user SET admin_device_id = a_device_id WHERE pkey_id = _user_id;
     END IF;
     RETURN QUERY SELECT _user_id, _user_public_id;
@@ -135,6 +135,7 @@ BEGIN
   IF (user_id ISNULL) THEN
     RAISE SQLSTATE 'R0007'; -- UnknownUser
   END IF;
+  RETURN QUERY SELECT salt;
 END
             "#,
         ),
@@ -163,12 +164,12 @@ BEGIN
   END IF;
 
   -- Setting up the token.
-  IF a_service_code & api.USER_SERVICE() > 0 THEN
+  IF a_service_code = (SELECT code FROM api.USER_SERVICE()) THEN
     UPDATE tbl.user
     SET user_token = a_user_token
     WHERE pkey_id = a_user_id;
   END IF;
-  IF a_service_code & api.ADMIN_SERVICE() > 0 THEN
+  IF a_service_code = (SELECT code FROM api.ADMIN_SERVICE())  THEN
     UPDATE tbl.user
     SET admin_token = a_admin_token
     WHERE pkey_id = a_user_id;
@@ -195,59 +196,59 @@ END
             ],
             r#"
 DECLARE
-  srv_ CONSTANT text NOT NULL := a_service::text;
-  rc_           integer;
-  is_token_ok_  boolean;
-  user_id_      bigint;
-  role_         tbl.enum_role;
-  
+    rc_          integer;
+    is_token_ok_ boolean;
+    user_id_     bigint;
+    role_        enum_role;
+
 BEGIN
-  ASSERT (a_username NOTNULL AND a_token NOTNULL AND a_service NOTNULL AND
-          a_device_id NOTNULL AND a_device_os NOTNULL);
+    ASSERT (a_username NOTNULL AND a_token NOTNULL AND a_service NOTNULL AND
+            a_device_id NOTNULL AND a_device_os NOTNULL);
 
-  -- Looking up the user
-  CASE srv_
-    WHEN 'user'
-      THEN SELECT pkey_id, role, (user_token = a_token)
-           INTO user_id_, role_, is_token_ok_
-           FROM tbl.user
-           WHERE username = a_username;
-    WHEN 'admin'
-      THEN SELECT pkey_id, role, (admin_token = a_token)
-           INTO user_id_, role_, is_token_ok_
-           FROM tbl.user
-           WHERE username = a_username;
-    END CASE;
-  GET DIAGNOSTICS rc_ := ROW_COUNT;
-  IF (rc_ <> 1) THEN
-    RAISE SQLSTATE 'R0007'; -- UnknownUser
-  END IF;
+    -- Looking up the user
+    CASE a_service
+        WHEN 'user'::enum_service
+            THEN SELECT pkey_id, u.role, (user_token = a_token)
+                 INTO user_id_, role_, is_token_ok_
+                 FROM tbl.user AS u
+                 WHERE username = a_username;
+        WHEN 'admin'::enum_service
+            THEN SELECT pkey_id, u.role, (admin_token = a_token)
+                 INTO user_id_, role_, is_token_ok_
+                 FROM tbl.user AS u
+                 WHERE username = a_username;
+        ELSE RAISE SQLSTATE 'R0001'; -- InvalidArgument
+        END CASE;
+    GET DIAGNOSTICS rc_ := ROW_COUNT;
+    IF (rc_ <> 1) THEN
+        RAISE SQLSTATE 'R0007'; -- UnknownUser
+    END IF;
 
-  -- Log the authorization attempt
-  INSERT INTO tbl.authorization_attempt(fkey_user, ip_address, is_token_ok)
-  VALUES (user_id_, a_ip_address, is_token_ok_);
+    -- Log the authorization attempt
+    INSERT INTO tbl.authorization_attempt(fkey_user, ip_address, is_token_ok)
+    VALUES (user_id_, a_ip_address, is_token_ok_ NOTNULL AND is_token_ok_);
 
-  -- Validating the token
-  IF (NOT is_token_ok_) THEN
-    RAISE SQLSTATE 'R000A'; -- InvalidToken
-  END IF;
+    -- Validating the token
+    IF NOT is_token_ok_ OR is_token_ok_ IS NULL THEN
+        RAISE SQLSTATE 'R000A'; -- InvalidToken
+    END IF;
 
--- Updating the device info
-  CASE srv_
-    WHEN 'user'
-      THEN UPDATE tbl.user
-           SET user_device_id = a_device_id
-           WHERE pkey_id = user_id_
-             AND user_token = a_token;
-    WHEN 'admin'
-      THEN UPDATE tbl.user
-           SET admin_device_id = a_device_id
-           WHERE pkey_id = user_id_
-             AND admin_token = a_token;
-    END CASE;
-  GET DIAGNOSTICS rc_ := ROW_COUNT;
-  ASSERT (rc_ = 1);
-  RETURN QUERY SELECT user_id_, role_;
+    -- Updating the device info
+    CASE a_service
+        WHEN 'user'::enum_service
+            THEN UPDATE tbl.user
+                 SET user_device_id = a_device_id
+                 WHERE pkey_id = user_id_
+                   AND user_token = a_token;
+        WHEN 'admin'::enum_service
+            THEN UPDATE tbl.user
+                 SET admin_device_id = a_device_id
+                 WHERE pkey_id = user_id_
+                   AND admin_token = a_token;
+        END CASE;
+    GET DIAGNOSTICS rc_ := ROW_COUNT;
+    ASSERT (rc_ = 1);
+    RETURN QUERY SELECT user_id_, role_;
 END
             "#,
         ),

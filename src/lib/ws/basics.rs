@@ -8,6 +8,7 @@ use serde::de::DeserializeOwned;
 use serde::*;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
+use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
 use tracing::{debug, error};
 
@@ -27,12 +28,13 @@ pub struct WsResponseError {
     pub reason: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Connection {
     pub connection_id: u32,
-    pub user_id: u32,
-    pub role: u32,
+    pub user_id: AtomicU32,
+    pub role: AtomicU32,
     pub address: IpAddr,
+    pub log_id: u64,
 }
 
 pub type WsSuccessResponse = WsSuccessResponseGeneric<serde_json::Value>;

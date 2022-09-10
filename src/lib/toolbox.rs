@@ -7,26 +7,11 @@ use eyre::*;
 use reqwest::StatusCode;
 use serde::*;
 use std::any::Any;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::future::Future;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 use tracing::*;
-
-#[derive(Copy, Clone)]
-pub struct RequestContext {
-    pub connection_id: u32,
-    pub user_id: u32,
-    pub seq: u32,
-    pub method: u32,
-    pub log_id: u64,
-}
-#[derive(Clone)]
-pub struct Toolbox {
-    db: Option<SimpleDbClient>,
-    values: Arc<DashMap<String, Arc<dyn Any + Send + Sync>>>,
-    sender: mpsc::Sender<WsMessage>,
-}
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NoResp;
 impl Display for NoResp {
@@ -47,12 +32,17 @@ impl CustomError {
             reason,
         }
     }
-    pub fn from_sql_error(err: &str) -> Result<Self> {
+    pub fn from_sql_error(err: &str, msg: impl Display) -> Result<Self> {
         let code = u32::from_str_radix(err, 36)?;
         let error_code = ErrorCode::new(code);
         let this = Self {
             code: error_code,
-            reason: format!("{} {}", err, error_code.canonical_reason().unwrap_or("")),
+            reason: format!(
+                "{} {} {}",
+                err,
+                error_code.canonical_reason().unwrap_or(""),
+                msg
+            ),
         };
 
         Ok(this)
@@ -64,6 +54,21 @@ impl Display for CustomError {
     }
 }
 impl std::error::Error for CustomError {}
+#[derive(Copy, Clone)]
+pub struct RequestContext {
+    pub connection_id: u32,
+    pub user_id: u32,
+    pub seq: u32,
+    pub method: u32,
+    pub log_id: u64,
+}
+#[derive(Clone)]
+pub struct Toolbox {
+    db: Option<SimpleDbClient>,
+    values: Arc<DashMap<String, Arc<dyn Any + Send + Sync>>>,
+    sender: mpsc::Sender<WsMessage>,
+    tasks: Option<Arc<Mutex<Vec<tokio::task::JoinHandle<()>>>>>,
+}
 
 impl Toolbox {
     pub fn new(sender: mpsc::Sender<WsMessage>) -> Self {
@@ -71,6 +76,7 @@ impl Toolbox {
             db: None,
             values: Arc::new(Default::default()),
             sender,
+            tasks: None,
         }
     }
     pub fn set_db(&mut self, db: SimpleDbClient) {
@@ -114,6 +120,16 @@ impl Toolbox {
             }),
         );
     }
+    pub fn collect_tasks(&mut self, f: impl FnOnce(&Self)) -> Vec<tokio::task::JoinHandle<()>> {
+        self.tasks.replace(Arc::new(Mutex::new(vec![])));
+        f(self);
+        let tasks = self.tasks.take().unwrap();
+        let mut tasks = tasks.lock().unwrap();
+        let mut result = vec![];
+        std::mem::swap(&mut result, &mut *tasks);
+        self.tasks = None;
+        result
+    }
     pub fn spawn_response<Resp: Send + Serialize>(
         &self,
         ctx: RequestContext,
@@ -128,7 +144,7 @@ impl Toolbox {
             method,
             log_id,
         } = ctx;
-        tokio::spawn(async move {
+        let t = tokio::spawn(async move {
             let resp = f.await;
             let resp = match resp {
                 Ok(ok) => WsResponse::Immediate(WsSuccessResponse {
@@ -142,8 +158,16 @@ impl Toolbox {
 
                 Err(err0) if err0.downcast_ref::<tokio_postgres::Error>().is_some() => {
                     let err = err0.downcast_ref::<tokio_postgres::Error>().unwrap();
-                    if let Ok(err) = CustomError::from_sql_error(err.code().unwrap().code()) {
-                        request_error_to_resp(&ctx, err.code, err)
+                    if let Some(code) = err.code() {
+                        if let Ok(err) = CustomError::from_sql_error(code.code(), &err0) {
+                            request_error_to_resp(&ctx, err.code, err)
+                        } else {
+                            internal_error_to_resp(
+                                &ctx,
+                                StatusCode::INTERNAL_SERVER_ERROR.into(),
+                                err0,
+                            )
+                        }
                     } else {
                         internal_error_to_resp(&ctx, StatusCode::INTERNAL_SERVER_ERROR.into(), err0)
                     }
@@ -163,5 +187,8 @@ impl Toolbox {
                 })
                 .await;
         });
+        if let Some(tasks) = &self.tasks {
+            tasks.lock().unwrap().push(t);
+        }
     }
 }

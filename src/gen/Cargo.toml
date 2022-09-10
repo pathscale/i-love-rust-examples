@@ -20,5 +20,9 @@ tokio-postgres = { version = "*", features = ["with-uuid-1"] }
 uuid = "*"
 lib = { path = "../lib" }
 bytes = "*"
+num = "0.4"
+num-derive = "0.3"
+num-traits = "0.2"
+
 [build-dependencies]
 codegen = { path = "../codegen" }

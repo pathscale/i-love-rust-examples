@@ -1,5 +1,4 @@
 use crate::endpoints::*;
-use gen::database::*;
 use lib::toolbox::*;
 use lib::ws::*;
 use std::sync::Arc;
@@ -14,15 +13,9 @@ impl RequestHandler for FooHandler {
         &self,
         toolbox: &Toolbox,
         ctx: RequestContext,
-        conn: Arc<Connection>,
+        _conn: Arc<Connection>,
         _req: WsRequestGeneric<Self::Request>,
     ) {
-        let db: DbClient = toolbox.get_db();
-        toolbox.spawn_response(ctx, async move {
-
-            Ok(FooResponse {
-                foo: false
-            })
-        });
+        toolbox.spawn_response(ctx, async move { Ok(FooResponse { foo: false }) });
     }
 }
