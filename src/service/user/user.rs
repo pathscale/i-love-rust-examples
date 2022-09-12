@@ -3,6 +3,7 @@ use crate::method::FooHandler;
 use coldvaults::endpoints::endpoint_auth_authorize;
 use coldvaults::method::AuthorizeHandler;
 use eyre::*;
+use gen::model::EnumService;
 use lib::config::load_config;
 use lib::database::connect_to_database;
 use lib::log::setup_logs;
@@ -21,7 +22,12 @@ async fn main() -> Result<()> {
     let mut server = WebsocketServer::new(config.app);
     server.add_database(db);
     let auth_controller = Arc::new(EndpointAuthController::new(server.get_toolbox()));
-    auth_controller.add_auth_endpoint(endpoint_auth_authorize(), AuthorizeHandler);
+    auth_controller.add_auth_endpoint(
+        endpoint_auth_authorize(),
+        AuthorizeHandler {
+            accept_service: EnumService::User,
+        },
+    );
     server.add_auth_controller(auth_controller);
     server.add_handler(endpoint_user_foo(), FooHandler);
     server.listen().await?;

@@ -29,7 +29,6 @@ use crate::ws::{
     WsResponse,
 };
 use model::endpoint::EndpointSchema;
-use std::sync::atomic::Ordering;
 
 pub struct WsStream<S> {
     ws_sink: SplitSink<WebSocketStream<S>, Message>,
@@ -125,7 +124,7 @@ impl WebsocketServer {
             let mut stream = wrap_ws_error(hs)?;
             let conn = Arc::new(Connection {
                 connection_id: get_conn_id(),
-                user_id: AtomicU32::new(0),
+                user_id: Default::default(),
                 role: AtomicU32::new(0),
                 address: addr.ip(),
                 log_id: get_log_id(),
@@ -178,7 +177,7 @@ impl WebsocketServer {
         let addr = conn.address;
         let context = RequestContext {
             connection_id: conn.connection_id,
-            user_id: conn.user_id.load(Ordering::Relaxed),
+            user_id: conn.get_user_id(),
             seq: 0,
             method: 0,
             log_id: conn.log_id,

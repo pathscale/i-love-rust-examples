@@ -388,3 +388,76 @@ impl DbClient {
         Ok(resp)
     }
 }
+pub struct FunAdminListUsersReq {
+    pub offset: i32,
+    pub limit: i32,
+}
+pub struct FunAdminListUsersRespRow {
+    pub user_id: i64,
+    pub user_public_id: i64,
+    pub email: String,
+    pub username: String,
+    pub role: EnumRole,
+    pub updated_at: i32,
+    pub created_at: i32,
+}
+pub struct FunAdminListUsersResp {
+    pub rows: Vec<FunAdminListUsersRespRow>,
+}
+impl DbClient {
+    #[allow(unused_variables)]
+    pub async fn fun_admin_list_users(
+        &self,
+        req: FunAdminListUsersReq,
+    ) -> Result<FunAdminListUsersResp> {
+        let rows = self
+            .client
+            .query(
+                "SELECT * FROM api.fun_admin_list_users(a_offset => $1::int, a_limit => $2::int);",
+                &[&req.offset, &req.limit],
+            )
+            .await?;
+        let mut resp = FunAdminListUsersResp {
+            rows: Vec::with_capacity(rows.len()),
+        };
+        for row in rows {
+            let r = FunAdminListUsersRespRow {
+                user_id: row.try_get(0)?,
+                user_public_id: row.try_get(1)?,
+                email: row.try_get(2)?,
+                username: row.try_get(3)?,
+                role: row.try_get(4)?,
+                updated_at: row.try_get(5)?,
+                created_at: row.try_get(6)?,
+            };
+            resp.rows.push(r);
+        }
+        Ok(resp)
+    }
+}
+pub struct FunAdminAssignRoleReq {
+    pub operator_user_id: i64,
+    pub user_public_id: i64,
+    pub new_role: EnumRole,
+}
+pub struct FunAdminAssignRoleRespRow {}
+pub struct FunAdminAssignRoleResp {
+    pub rows: Vec<FunAdminAssignRoleRespRow>,
+}
+impl DbClient {
+    #[allow(unused_variables)]
+    pub async fn fun_admin_assign_role(
+        &self,
+        req: FunAdminAssignRoleReq,
+    ) -> Result<FunAdminAssignRoleResp> {
+        let rows = self.client.query("SELECT * FROM api.fun_admin_assign_role(a_operator_user_id => $1::bigint, a_user_public_id => $2::bigint, a_new_role => $3::enum_role);", &[&req.operator_user_id, &req.user_public_id, &req.new_role]).await?;
+        let mut resp = FunAdminAssignRoleResp {
+            rows: Vec::with_capacity(rows.len()),
+        };
+        for row in rows {
+            let r = FunAdminAssignRoleRespRow {};
+            resp.rows.push(r);
+        }
+        Ok(resp)
+    }
+}

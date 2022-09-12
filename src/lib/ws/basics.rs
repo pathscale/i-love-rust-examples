@@ -8,9 +8,9 @@ use serde::de::DeserializeOwned;
 use serde::*;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
-use std::sync::atomic::AtomicU32;
+use std::sync::atomic::{AtomicI64, AtomicU32};
 use std::sync::Arc;
-use tracing::{debug, error};
+use tracing::*;
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct WsRequestGeneric<Req> {
@@ -31,10 +31,15 @@ pub struct WsResponseError {
 #[derive(Debug)]
 pub struct Connection {
     pub connection_id: u32,
-    pub user_id: AtomicU32,
+    pub user_id: AtomicI64,
     pub role: AtomicU32,
     pub address: IpAddr,
     pub log_id: u64,
+}
+impl Connection {
+    pub fn get_user_id(&self) -> i64 {
+        self.user_id.load(std::sync::atomic::Ordering::Relaxed)
+    }
 }
 
 pub type WsSuccessResponse = WsSuccessResponseGeneric<serde_json::Value>;
@@ -96,7 +101,7 @@ pub fn request_error_to_resp<E: Display + Debug>(
 ) -> WsResponse {
     let log_id = ctx.log_id;
 
-    debug!(?log_id, "Request error: {:?}", err);
+    warn!(?log_id, "Request error: {:?}", err);
     WsResponse::Error(WsResponseError {
         method: ctx.method,
         code: code.to_u32(),

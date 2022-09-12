@@ -1,7 +1,11 @@
 use num_derive::FromPrimitive;
 use serde::*;
+use strum_macros::EnumString;
 use tokio_postgres::types::*;
-#[derive(Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize, FromPrimitive)]
+
+#[derive(
+    Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize, FromPrimitive, PartialEq, EnumString,
+)]
 #[postgres(name = "enum_role")]
 pub enum EnumRole {
     #[postgres(name = "guest")]
@@ -13,7 +17,9 @@ pub enum EnumRole {
     #[postgres(name = "developer")]
     Developer = 3,
 }
-#[derive(Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize, FromPrimitive)]
+#[derive(
+    Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize, FromPrimitive, PartialEq, EnumString,
+)]
 #[postgres(name = "enum_recovery_question_category")]
 pub enum EnumRecoveryQuestionCategory {
     #[postgres(name = "childhood")]
@@ -35,7 +41,9 @@ pub enum EnumRecoveryQuestionCategory {
     #[postgres(name = "historical")]
     Historical = 8,
 }
-#[derive(Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize, FromPrimitive)]
+#[derive(
+    Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize, FromPrimitive, PartialEq, EnumString,
+)]
 #[postgres(name = "enum_service")]
 pub enum EnumService {
     #[postgres(name = "auth")]

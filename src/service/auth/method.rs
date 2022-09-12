@@ -1,6 +1,7 @@
 use crate::endpoints::*;
 use eyre::*;
 use gen::database::*;
+use gen::model::EnumService;
 use lib::toolbox::*;
 use lib::ws::*;
 use reqwest::StatusCode;
@@ -141,7 +142,9 @@ pub fn hash_password(password: &str, salt: impl AsRef<[u8]>) -> Result<Vec<u8>> 
     Ok(hasher.finalize().to_vec())
 }
 
-pub struct AuthorizeHandler;
+pub struct AuthorizeHandler {
+    pub accept_service: EnumService,
+}
 impl RequestHandler for AuthorizeHandler {
     type Request = AuthAuthorizeReq;
     type Response = AuthAuthorizeResp;
@@ -154,13 +157,25 @@ impl RequestHandler for AuthorizeHandler {
         req: WsRequestGeneric<Self::Request>,
     ) {
         let db: DbClient = toolbox.get_db();
+        let accept_srv = self.accept_service;
         toolbox.spawn_response(ctx, async move {
+            let srv = num::FromPrimitive::from_u32(req.params.service_code as u32)
+                .ok_or_else(|| eyre!("Invalid service code"))?;
+
+            if srv != accept_srv {
+                bail!(CustomError::new(
+                    StatusCode::FORBIDDEN,
+                    format!(
+                        "Invalid service, only {:?} {} permitted",
+                        accept_srv, accept_srv as u32
+                    ),
+                ));
+            }
             let auth_data = db
                 .fun_auth_authorize(FunAuthAuthorizeReq {
                     username: req.params.username.to_string(),
                     token: Uuid::from_str(&req.params.token)?,
-                    service: num::FromPrimitive::from_u32(req.params.service_code as u32)
-                        .ok_or_else(|| eyre!("Invalid service code"))?,
+                    service: srv,
                     device_id: req.params.device_id,
                     device_os: req.params.device_os,
                     ip_address: conn.address,

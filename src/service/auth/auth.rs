@@ -1,3 +1,5 @@
+mod method;
+
 use crate::endpoints::{endpoint_auth_login, endpoint_auth_signup};
 use crate::method::{LoginHandler, SignupHandler};
 use eyre::*;
@@ -8,7 +10,6 @@ use lib::ws::{EndpointAuthController, WebsocketServer};
 use std::sync::Arc;
 
 pub mod endpoints;
-pub mod method;
 
 #[tokio::main]
 async fn main() -> Result<()> {
