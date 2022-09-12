@@ -427,6 +427,55 @@ END
 $$;
         
 
+CREATE OR REPLACE FUNCTION api.fun_admin_list_users(a_offset int, a_limit int)
+RETURNS table (
+user_id bigint,
+user_public_id bigint,
+email text,
+username text,
+role enum_role,
+updated_at int,
+created_at int
+)
+LANGUAGE plpgsql
+AS $$
+    
+BEGIN
+    RETURN QUERY SELECT
+        u.user_id,
+        u.user_public_id,
+        u.email,
+        u.username,
+        u.role,
+        u.updated_at::int,
+        u.created_at::int
+    FROM tbl.user AS u
+    ORDER BY user_id
+    OFFSET a_offset
+    LIMIT a_limit;
+END
+        
+$$;
+        
+
+CREATE OR REPLACE FUNCTION api.fun_admin_assign_role(a_operator_user_id bigint, a_user_public_id bigint, a_new_role enum_role)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+    
+DECLARE
+    operator_user enum_role; 
+BEGIN
+    SELECT role FROM tbl.user WHERE user_id = a_operator_user_id INTO STRICT operator_role;
+    IF operator_role <> 'admin' THEN
+        RAISE SQLSTATE R000S; -- InvalidRole
+    END IF;
+    UPDATE tbl.user SET role = a_new_role WHERE user_public_id = a_user_public_id;
+END
+        
+$$;
+        
+
 CREATE OR REPLACE FUNCTION api.AUTH_SERVICE()
 RETURNS table (
 code int

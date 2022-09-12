@@ -110,6 +110,65 @@
   {
     "name": "admin",
     "id": 3,
-    "endpoints": []
+    "endpoints": [
+      {
+        "name": "ListUsers",
+        "code": 30010,
+        "parameters": [
+          {
+            "name": "offset",
+            "ty": "Int"
+          },
+          {
+            "name": "limit",
+            "ty": "Int"
+          }
+        ],
+        "returns": [
+          {
+            "name": "user_public_id",
+            "ty": "BigInt"
+          },
+          {
+            "name": "username",
+            "ty": "Text"
+          },
+          {
+            "name": "email",
+            "ty": "Text"
+          },
+          {
+            "name": "created_at",
+            "ty": "Int"
+          },
+          {
+            "name": "updated_at",
+            "ty": "Int"
+          }
+        ],
+        "json_schema": null
+      },
+      {
+        "name": "AssignRole",
+        "code": 30020,
+        "parameters": [
+          {
+            "name": "user_public_id",
+            "ty": "BigInt"
+          },
+          {
+            "name": "new_role",
+            "ty": "Text"
+          }
+        ],
+        "returns": [
+          {
+            "name": "success",
+            "ty": "Boolean"
+          }
+        ],
+        "json_schema": null
+      }
+    ]
   }
 ]
