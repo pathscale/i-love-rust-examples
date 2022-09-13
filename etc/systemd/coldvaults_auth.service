@@ -11,8 +11,8 @@ RestartSec=1
 WorkingDirectory=/home/cv/coldvaults
 ExecStart=/usr/bin/bash -c 'cargo run --bin auth --release --host=auth.defi.digital --port=443 --config=etc/config.json'
 
-StandardError=file:/home/cv/coldvaults/log/coldvaults_auth.log
-StandardOutput=file:/home/cv/coldvaults/log/coldvaults_auth.log
+StandardError=append:/home/cv/coldvaults/log/coldvaults_auth.log
+StandardOutput=append:/home/cv/coldvaults/log/coldvaults_auth.log
 StandardInput=null
 
 [Install]
