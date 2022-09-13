@@ -58,13 +58,13 @@ pub fn endpoint_auth_signup() -> EndpointSchema {
         "Signup",
         10010,
         vec![
-            Field::new("username", Type::Text),
-            Field::new("password", Type::Text),
+            Field::new("username", Type::String),
+            Field::new("password", Type::String),
             Field::new("agreed_tos", Type::Boolean),
             Field::new("agreed_privacy", Type::Boolean),
         ],
         vec![
-            Field::new("username", Type::Text),
+            Field::new("username", Type::String),
             Field::new("user_public_id", Type::BigInt),
         ],
     )
@@ -74,11 +74,11 @@ pub fn endpoint_auth_login() -> EndpointSchema {
         "Login",
         10020,
         vec![
-            Field::new("username", Type::Text),
-            Field::new("password", Type::Text),
+            Field::new("username", Type::String),
+            Field::new("password", Type::String),
             Field::new("service_code", Type::Int),
-            Field::new("device_id", Type::Text),
-            Field::new("device_os", Type::Text),
+            Field::new("device_id", Type::String),
+            Field::new("device_os", Type::String),
         ],
         vec![],
     )
@@ -88,11 +88,11 @@ pub fn endpoint_auth_authorize() -> EndpointSchema {
         "Authorize",
         10030,
         vec![
-            Field::new("username", Type::Text),
-            Field::new("token", Type::Text),
+            Field::new("username", Type::String),
+            Field::new("token", Type::String),
             Field::new("service_code", Type::Int),
-            Field::new("device_id", Type::Text),
-            Field::new("device_os", Type::Text),
+            Field::new("device_id", Type::String),
+            Field::new("device_os", Type::String),
         ],
         vec![],
     )

@@ -37,7 +37,7 @@ pub struct FunAuthSignupResp {
 impl DbClient {
     #[allow(unused_variables)]
     pub async fn fun_auth_signup(&self, req: FunAuthSignupReq) -> Result<FunAuthSignupResp> {
-        let rows = self.client.query("SELECT * FROM api.fun_auth_signup(a_public_id => $1::bigint, a_username => $2::text, a_password_hash => $3::bytea, a_password_salt => $4::bytea, a_age => $5::int, a_preferred_language => $6::text, a_agreed_tos => $7::boolean, a_agreed_privacy => $8::boolean, a_ip_address => $9::inet);", &[&req.public_id, &req.username, &req.password_hash, &req.password_salt, &req.age, &req.preferred_language, &req.agreed_tos, &req.agreed_privacy, &req.ip_address]).await?;
+        let rows = self.client.query("SELECT * FROM api.fun_auth_signup(a_public_id => $1::bigint, a_username => $2::varchar, a_password_hash => $3::bytea, a_password_salt => $4::bytea, a_age => $5::int, a_preferred_language => $6::varchar, a_agreed_tos => $7::boolean, a_agreed_privacy => $8::boolean, a_ip_address => $9::inet);", &[&req.public_id, &req.username, &req.password_hash, &req.password_salt, &req.age, &req.preferred_language, &req.agreed_tos, &req.agreed_privacy, &req.ip_address]).await?;
         let mut resp = FunAuthSignupResp {
             rows: Vec::with_capacity(rows.len()),
         };
@@ -71,7 +71,7 @@ impl DbClient {
         &self,
         req: FunAuthAuthenticateReq,
     ) -> Result<FunAuthAuthenticateResp> {
-        let rows = self.client.query("SELECT * FROM api.fun_auth_authenticate(a_username => $1::text, a_password_hash => $2::bytea, a_service_code => $3::int, a_device_id => $4::text, a_device_os => $5::text, a_ip_address => $6::inet);", &[&req.username, &req.password_hash, &req.service_code, &req.device_id, &req.device_os, &req.ip_address]).await?;
+        let rows = self.client.query("SELECT * FROM api.fun_auth_authenticate(a_username => $1::varchar, a_password_hash => $2::bytea, a_service_code => $3::int, a_device_id => $4::varchar, a_device_os => $5::varchar, a_ip_address => $6::inet);", &[&req.username, &req.password_hash, &req.service_code, &req.device_id, &req.device_os, &req.ip_address]).await?;
         let mut resp = FunAuthAuthenticateResp {
             rows: Vec::with_capacity(rows.len()),
         };
@@ -103,7 +103,7 @@ impl DbClient {
         let rows = self
             .client
             .query(
-                "SELECT * FROM api.fun_auth_get_password_salt(a_username => $1::text);",
+                "SELECT * FROM api.fun_auth_get_password_salt(a_username => $1::varchar);",
                 &[&req.username],
             )
             .await?;
@@ -164,7 +164,7 @@ impl DbClient {
         &self,
         req: FunAuthAuthorizeReq,
     ) -> Result<FunAuthAuthorizeResp> {
-        let rows = self.client.query("SELECT * FROM api.fun_auth_authorize(a_username => $1::text, a_token => $2::uuid, a_service => $3::enum_service, a_device_id => $4::text, a_device_os => $5::text, a_ip_address => $6::inet);", &[&req.username, &req.token, &req.service, &req.device_id, &req.device_os, &req.ip_address]).await?;
+        let rows = self.client.query("SELECT * FROM api.fun_auth_authorize(a_username => $1::varchar, a_token => $2::uuid, a_service => $3::enum_service, a_device_id => $4::varchar, a_device_os => $5::varchar, a_ip_address => $6::inet);", &[&req.username, &req.token, &req.service, &req.device_id, &req.device_os, &req.ip_address]).await?;
         let mut resp = FunAuthAuthorizeResp {
             rows: Vec::with_capacity(rows.len()),
         };
@@ -196,7 +196,7 @@ impl DbClient {
         &self,
         req: FunAuthChangePasswordReq,
     ) -> Result<FunAuthChangePasswordResp> {
-        let rows = self.client.query("SELECT * FROM api.fun_auth_change_password(a_username => $1::text, a_old_password_hash => $2::bytea, a_new_password_hash => $3::bytea, a_device_id => $4::text, a_device_os => $5::text, a_ip_address => $6::inet);", &[&req.username, &req.old_password_hash, &req.new_password_hash, &req.device_id, &req.device_os, &req.ip_address]).await?;
+        let rows = self.client.query("SELECT * FROM api.fun_auth_change_password(a_username => $1::varchar, a_old_password_hash => $2::bytea, a_new_password_hash => $3::bytea, a_device_id => $4::varchar, a_device_os => $5::varchar, a_ip_address => $6::inet);", &[&req.username, &req.old_password_hash, &req.new_password_hash, &req.device_id, &req.device_os, &req.ip_address]).await?;
         let mut resp = FunAuthChangePasswordResp {
             rows: Vec::with_capacity(rows.len()),
         };
@@ -284,7 +284,7 @@ impl DbClient {
         &self,
         req: FunAuthBasicAuthenticateReq,
     ) -> Result<FunAuthBasicAuthenticateResp> {
-        let rows = self.client.query("SELECT * FROM api.fun_auth_basic_authenticate(a_username => $1::text, a_device_id => $2::text, a_device_os => $3::text, a_ip_address => $4::inet);", &[&req.username, &req.device_id, &req.device_os, &req.ip_address]).await?;
+        let rows = self.client.query("SELECT * FROM api.fun_auth_basic_authenticate(a_username => $1::varchar, a_device_id => $2::varchar, a_device_os => $3::varchar, a_ip_address => $4::inet);", &[&req.username, &req.device_id, &req.device_os, &req.ip_address]).await?;
         let mut resp = FunAuthBasicAuthenticateResp {
             rows: Vec::with_capacity(rows.len()),
         };
@@ -350,7 +350,7 @@ impl DbClient {
         &self,
         req: FunSubmitRecoveryAnswersReq,
     ) -> Result<FunSubmitRecoveryAnswersResp> {
-        let rows = self.client.query("SELECT * FROM api.fun_submit_recovery_answers(a_user_id => $1::bigint, a_question_ids => $2::int[], a_answers => $3::text[], a_password_reset_token => $4::uuid, a_token_valid => $5::int);", &[&req.user_id, &req.question_ids, &req.answers, &req.password_reset_token, &req.token_valid]).await?;
+        let rows = self.client.query("SELECT * FROM api.fun_submit_recovery_answers(a_user_id => $1::bigint, a_question_ids => $2::int[], a_answers => $3::varchar[], a_password_reset_token => $4::uuid, a_token_valid => $5::int);", &[&req.user_id, &req.question_ids, &req.answers, &req.password_reset_token, &req.token_valid]).await?;
         let mut resp = FunSubmitRecoveryAnswersResp {
             rows: Vec::with_capacity(rows.len()),
         };

@@ -27,7 +27,7 @@ impl ToRust for Type {
                 format!("Option<{}>", t.to_rust_ref())
             }
             Type::Boolean => "bool".to_owned(),
-            Type::Text => "String".to_owned(),
+            Type::String => "String".to_owned(),
             Type::Bytea => "Vec<u8>".to_owned(),
             Type::UUID => "uuid::Uuid".to_owned(),
             Type::Inet => "std::net::IpAddr".to_owned(),
@@ -59,7 +59,7 @@ impl ToRust for Type {
                 format!("Option<{}>", t.to_rust_ref())
             }
             Type::Boolean => "bool".to_owned(),
-            Type::Text => "String".to_owned(),
+            Type::String => "String".to_owned(),
             Type::Bytea => "Vec<u8>".to_owned(),
             Type::UUID => "uuid::Uuid".to_owned(),
             Type::Inet => "std::net::IpAddr".to_owned(),

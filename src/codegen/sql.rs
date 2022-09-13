@@ -31,7 +31,7 @@ impl ToSql for Type {
                 format!("Option<{}>", t.to_sql())
             }
             Type::Boolean => "boolean".to_owned(),
-            Type::Text => "text".to_owned(),
+            Type::String => "varchar".to_owned(),
             Type::Bytea => "bytea".to_owned(),
             Type::UUID => "uuid".to_owned(),
             Type::Inet => "inet".to_owned(),

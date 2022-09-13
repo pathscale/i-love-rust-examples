@@ -1,6 +1,6 @@
 CREATE SCHEMA IF NOT EXISTS api;
 
-CREATE OR REPLACE FUNCTION api.fun_auth_signup(a_public_id bigint, a_username text, a_password_hash bytea, a_password_salt bytea, a_age int, a_preferred_language text, a_agreed_tos boolean, a_agreed_privacy boolean, a_ip_address inet)
+CREATE OR REPLACE FUNCTION api.fun_auth_signup(a_public_id bigint, a_username varchar, a_password_hash bytea, a_password_salt bytea, a_age int, a_preferred_language varchar, a_agreed_tos boolean, a_agreed_privacy boolean, a_ip_address inet)
 RETURNS table (
 user_id bigint
 )
@@ -42,7 +42,7 @@ END
 $$;
         
 
-CREATE OR REPLACE FUNCTION api.fun_auth_authenticate(a_username text, a_password_hash bytea, a_service_code int, a_device_id text, a_device_os text, a_ip_address inet)
+CREATE OR REPLACE FUNCTION api.fun_auth_authenticate(a_username varchar, a_password_hash bytea, a_service_code int, a_device_id varchar, a_device_os varchar, a_ip_address inet)
 RETURNS table (
 user_id bigint,
 user_public_id bigint
@@ -103,7 +103,7 @@ END
 $$;
         
 
-CREATE OR REPLACE FUNCTION api.fun_auth_get_password_salt(a_username text)
+CREATE OR REPLACE FUNCTION api.fun_auth_get_password_salt(a_username varchar)
 RETURNS table (
 salt bytea
 )
@@ -168,7 +168,7 @@ END
 $$;
         
 
-CREATE OR REPLACE FUNCTION api.fun_auth_authorize(a_username text, a_token uuid, a_service enum_service, a_device_id text, a_device_os text, a_ip_address inet)
+CREATE OR REPLACE FUNCTION api.fun_auth_authorize(a_username varchar, a_token uuid, a_service enum_service, a_device_id varchar, a_device_os varchar, a_ip_address inet)
 RETURNS table (
 user_id bigint,
 role enum_role
@@ -235,7 +235,7 @@ END
 $$;
         
 
-CREATE OR REPLACE FUNCTION api.fun_auth_change_password(a_username text, a_old_password_hash bytea, a_new_password_hash bytea, a_device_id text, a_device_os text, a_ip_address inet)
+CREATE OR REPLACE FUNCTION api.fun_auth_change_password(a_username varchar, a_old_password_hash bytea, a_new_password_hash bytea, a_device_id varchar, a_device_os varchar, a_ip_address inet)
 RETURNS void
 LANGUAGE plpgsql
 AS $$
@@ -283,7 +283,7 @@ $$;
 CREATE OR REPLACE FUNCTION api.fun_get_recovery_question_data()
 RETURNS table (
 question_id int,
-content text,
+content varchar,
 category enum_recovery_question_category
 )
 LANGUAGE plpgsql
@@ -318,7 +318,7 @@ END
 $$;
         
 
-CREATE OR REPLACE FUNCTION api.fun_auth_basic_authenticate(a_username text, a_device_id text, a_device_os text, a_ip_address inet)
+CREATE OR REPLACE FUNCTION api.fun_auth_basic_authenticate(a_username varchar, a_device_id varchar, a_device_os varchar, a_ip_address inet)
 RETURNS table (
 user_id inet
 )
@@ -352,7 +352,7 @@ $$;
 CREATE OR REPLACE FUNCTION api.fun_auth_get_recovery_questions(a_user_id bigint)
 RETURNS table (
 question_id int,
-question text
+question varchar
 )
 LANGUAGE plpgsql
 AS $$
@@ -369,7 +369,7 @@ END
 $$;
         
 
-CREATE OR REPLACE FUNCTION api.fun_submit_recovery_answers(a_user_id bigint, a_question_ids int[], a_answers text[], a_password_reset_token uuid, a_token_valid int)
+CREATE OR REPLACE FUNCTION api.fun_submit_recovery_answers(a_user_id bigint, a_question_ids int[], a_answers varchar[], a_password_reset_token uuid, a_token_valid int)
 RETURNS void
 LANGUAGE plpgsql
 AS $$
@@ -431,8 +431,8 @@ CREATE OR REPLACE FUNCTION api.fun_admin_list_users(a_offset int, a_limit int)
 RETURNS table (
 user_id bigint,
 user_public_id bigint,
-email text,
-username text,
+email varchar,
+username varchar,
 role enum_role,
 updated_at int,
 created_at int

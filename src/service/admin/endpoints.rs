@@ -48,8 +48,8 @@ pub fn endpoint_admin_list_users() -> EndpointSchema {
         ],
         vec![
             Field::new("user_public_id", Type::BigInt),
-            Field::new("username", Type::Text),
-            Field::new("email", Type::Text),
+            Field::new("username", Type::String),
+            Field::new("email", Type::String),
             Field::new("created_at", Type::Int),
             Field::new("updated_at", Type::Int),
         ],
@@ -61,7 +61,7 @@ pub fn endpoint_admin_assign_role() -> EndpointSchema {
         30020,
         vec![
             Field::new("user_public_id", Type::BigInt),
-            Field::new("new_role", Type::Text),
+            Field::new("new_role", Type::String),
         ],
         vec![Field::new("success", Type::Boolean)],
     )

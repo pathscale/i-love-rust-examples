@@ -11,8 +11,8 @@ pub fn get_admin_pg_func() -> Vec<ProceduralFunction> {
             vec![
                 Field::new("user_id", Type::BigInt),
                 Field::new("user_public_id", Type::BigInt),
-                Field::new("email", Type::Text),
-                Field::new("username", Type::Text),
+                Field::new("email", Type::String),
+                Field::new("username", Type::String),
                 Field::new("role", Type::Enum("role".to_string(), vec![])),
                 Field::new("updated_at", Type::Int),
                 Field::new("created_at", Type::Int),

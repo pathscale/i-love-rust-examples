@@ -6,11 +6,11 @@ pub fn get_auth_pg_func() -> Vec<ProceduralFunction> {
             "fun_auth_signup",
             vec![
                 Field::new("public_id", Type::BigInt),
-                Field::new("username", Type::Text),
+                Field::new("username", Type::String),
                 Field::new("password_hash", Type::Bytea),
                 Field::new("password_salt", Type::Bytea),
                 Field::new("age", Type::Int),
-                Field::new("preferred_language", Type::Text),
+                Field::new("preferred_language", Type::String),
                 Field::new("agreed_tos", Type::Boolean),
                 Field::new("agreed_privacy", Type::Boolean),
                 Field::new("ip_address", Type::Inet),
@@ -53,11 +53,11 @@ END
         ProceduralFunction::new(
             "fun_auth_authenticate",
             vec![
-                Field::new("username", Type::Text),
+                Field::new("username", Type::String),
                 Field::new("password_hash", Type::Bytea),
                 Field::new("service_code", Type::Int),
-                Field::new("device_id", Type::Text),
-                Field::new("device_os", Type::Text),
+                Field::new("device_id", Type::String),
+                Field::new("device_os", Type::String),
                 Field::new("ip_address", Type::Inet),
             ],
             vec![
@@ -118,7 +118,7 @@ END
         ),
         ProceduralFunction::new(
             "fun_auth_get_password_salt",
-            vec![Field::new("username", Type::Text)],
+            vec![Field::new("username", Type::String)],
             vec![Field::new("salt", Type::Bytea)],
             r#"
 DECLARE
@@ -183,11 +183,11 @@ END
         ProceduralFunction::new(
             "fun_auth_authorize",
             vec![
-                Field::new("username", Type::Text),
+                Field::new("username", Type::String),
                 Field::new("token", Type::UUID),
                 Field::new("service", Type::Enum("service".to_owned(), vec![])),
-                Field::new("device_id", Type::Text),
-                Field::new("device_os", Type::Text),
+                Field::new("device_id", Type::String),
+                Field::new("device_os", Type::String),
                 Field::new("ip_address", Type::Inet),
             ],
             vec![
@@ -255,11 +255,11 @@ END
         ProceduralFunction::new(
             "fun_auth_change_password",
             vec![
-                Field::new("username", Type::Text),
+                Field::new("username", Type::String),
                 Field::new("old_password_hash", Type::Bytea),
                 Field::new("new_password_hash", Type::Bytea),
-                Field::new("device_id", Type::Text),
-                Field::new("device_os", Type::Text),
+                Field::new("device_id", Type::String),
+                Field::new("device_os", Type::String),
                 Field::new("ip_address", Type::Inet),
             ],
             vec![],
@@ -307,7 +307,7 @@ END
             vec![],
             vec![
                 Field::new("question_id", Type::Int),
-                Field::new("content", Type::Text),
+                Field::new("content", Type::String),
                 Field::new(
                     "category",
                     Type::Enum("recovery_question_category".to_owned(), vec![]),
@@ -346,9 +346,9 @@ END
         ProceduralFunction::new(
             "fun_auth_basic_authenticate",
             vec![
-                Field::new("username", Type::Text),
-                Field::new("device_id", Type::Text),
-                Field::new("device_os", Type::Text),
+                Field::new("username", Type::String),
+                Field::new("device_id", Type::String),
+                Field::new("device_os", Type::String),
                 Field::new("ip_address", Type::Inet),
             ],
             vec![Field::new("user_id", Type::Inet)],
@@ -380,7 +380,7 @@ END
             vec![Field::new("user_id", Type::BigInt)],
             vec![
                 Field::new("question_id", Type::Int),
-                Field::new("question", Type::Text),
+                Field::new("question", Type::String),
             ],
             r#"
 BEGIN
@@ -398,7 +398,7 @@ END
             vec![
                 Field::new("user_id", Type::BigInt),
                 Field::new("question_ids", Type::Vec(Box::new(Type::Int))),
-                Field::new("answers", Type::Vec(Box::new(Type::Text))),
+                Field::new("answers", Type::Vec(Box::new(Type::String))),
                 Field::new("password_reset_token", Type::UUID),
                 Field::new("token_valid", Type::Int),
             ],

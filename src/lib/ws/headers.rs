@@ -105,7 +105,7 @@ impl AuthController for EndpointAuthController {
                         params.insert(
                             param.name.to_case(Case::Camel),
                             match param.ty {
-                                Type::Text => serde_json::Value::String(value.to_string()),
+                                Type::String => serde_json::Value::String(value.to_string()),
                                 Type::Int => serde_json::Value::Number(
                                     value
                                         .parse::<i64>()

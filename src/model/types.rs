@@ -35,7 +35,7 @@ pub enum Type {
     Int,
     BigInt,
     Boolean,
-    Text,
+    String,
     Bytea,
     UUID,
     Inet,
