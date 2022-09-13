@@ -1,182 +1,318 @@
-[
-  {
-    "name": "auth",
-    "id": 1,
-    "endpoints": [
-      {
-        "name": "Login",
-        "code": 10020,
-        "parameters": [
+{
+  "services": [
+    {
+      "name": "auth",
+      "id": 1,
+      "endpoints": [
+        {
+          "name": "Login",
+          "code": 10020,
+          "parameters": [
+            {
+              "name": "username",
+              "ty": "String"
+            },
+            {
+              "name": "password",
+              "ty": "String"
+            },
+            {
+              "name": "service_code",
+              "ty": {
+                "Enum": {
+                  "name": "service",
+                  "variants": []
+                }
+              }
+            },
+            {
+              "name": "device_id",
+              "ty": "String"
+            },
+            {
+              "name": "device_os",
+              "ty": "String"
+            }
+          ],
+          "returns": [
+            {
+              "name": "username",
+              "ty": "String"
+            },
+            {
+              "name": "user_public_id",
+              "ty": "BigInt"
+            },
+            {
+              "name": "user_token",
+              "ty": "String"
+            },
+            {
+              "name": "admin_token",
+              "ty": "String"
+            }
+          ],
+          "json_schema": null
+        },
+        {
+          "name": "Signup",
+          "code": 10010,
+          "parameters": [
+            {
+              "name": "username",
+              "ty": "String"
+            },
+            {
+              "name": "password",
+              "ty": "String"
+            },
+            {
+              "name": "email",
+              "ty": "String"
+            },
+            {
+              "name": "phone",
+              "ty": "String"
+            },
+            {
+              "name": "agreed_tos",
+              "ty": "Boolean"
+            },
+            {
+              "name": "agreed_privacy",
+              "ty": "Boolean"
+            }
+          ],
+          "returns": [
+            {
+              "name": "username",
+              "ty": "String"
+            },
+            {
+              "name": "user_public_id",
+              "ty": "BigInt"
+            }
+          ],
+          "json_schema": null
+        },
+        {
+          "name": "Authorize",
+          "code": 10030,
+          "parameters": [
+            {
+              "name": "username",
+              "ty": "String"
+            },
+            {
+              "name": "token",
+              "ty": "String"
+            },
+            {
+              "name": "service_code",
+              "ty": {
+                "Enum": {
+                  "name": "service",
+                  "variants": []
+                }
+              }
+            },
+            {
+              "name": "device_id",
+              "ty": "String"
+            },
+            {
+              "name": "device_os",
+              "ty": "String"
+            }
+          ],
+          "returns": [
+            {
+              "name": "success",
+              "ty": "Boolean"
+            }
+          ],
+          "json_schema": null
+        }
+      ]
+    },
+    {
+      "name": "user",
+      "id": 2,
+      "endpoints": [
+        {
+          "name": "Foo",
+          "code": 20010,
+          "parameters": [],
+          "returns": [
+            {
+              "name": "foo",
+              "ty": "Boolean"
+            }
+          ],
+          "json_schema": null
+        }
+      ]
+    },
+    {
+      "name": "admin",
+      "id": 3,
+      "endpoints": [
+        {
+          "name": "ListUsers",
+          "code": 30010,
+          "parameters": [
+            {
+              "name": "offset",
+              "ty": "Int"
+            },
+            {
+              "name": "limit",
+              "ty": "Int"
+            }
+          ],
+          "returns": [
+            {
+              "name": "users",
+              "ty": {
+                "DataTable": {
+                  "name": "ListUsersResponseRow",
+                  "fields": [
+                    {
+                      "name": "user_public_id",
+                      "ty": "BigInt"
+                    },
+                    {
+                      "name": "username",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "email",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "created_at",
+                      "ty": "Int"
+                    },
+                    {
+                      "name": "updated_at",
+                      "ty": "Int"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "json_schema": null
+        },
+        {
+          "name": "AssignRole",
+          "code": 30020,
+          "parameters": [
+            {
+              "name": "user_public_id",
+              "ty": "BigInt"
+            },
+            {
+              "name": "new_role",
+              "ty": "String"
+            }
+          ],
+          "returns": [
+            {
+              "name": "success",
+              "ty": "Boolean"
+            }
+          ],
+          "json_schema": null
+        }
+      ]
+    }
+  ],
+  "enums": [
+    {
+      "Enum": {
+        "name": "role",
+        "variants": [
           {
-            "name": "username",
-            "ty": "String"
+            "name": "guest",
+            "value": 0
           },
           {
-            "name": "password",
-            "ty": "String"
+            "name": "user",
+            "value": 1
           },
           {
-            "name": "service_code",
-            "ty": "Int"
+            "name": "admin",
+            "value": 2
           },
           {
-            "name": "device_id",
-            "ty": "String"
-          },
-          {
-            "name": "device_os",
-            "ty": "String"
+            "name": "developer",
+            "value": 3
           }
-        ],
-        "returns": [],
-        "json_schema": null
-      },
-      {
-        "name": "Signup",
-        "code": 10010,
-        "parameters": [
-          {
-            "name": "username",
-            "ty": "String"
-          },
-          {
-            "name": "password",
-            "ty": "String"
-          },
-          {
-            "name": "email",
-            "ty": "String"
-          },
-          {
-            "name": "phone",
-            "ty": "String"
-          },
-          {
-            "name": "agreed_tos",
-            "ty": "Boolean"
-          },
-          {
-            "name": "agreed_privacy",
-            "ty": "Boolean"
-          }
-        ],
-        "returns": [
-          {
-            "name": "username",
-            "ty": "String"
-          },
-          {
-            "name": "user_public_id",
-            "ty": "BigInt"
-          }
-        ],
-        "json_schema": null
-      },
-      {
-        "name": "Authorize",
-        "code": 10030,
-        "parameters": [
-          {
-            "name": "username",
-            "ty": "String"
-          },
-          {
-            "name": "token",
-            "ty": "String"
-          },
-          {
-            "name": "service_code",
-            "ty": "Int"
-          },
-          {
-            "name": "device_id",
-            "ty": "String"
-          },
-          {
-            "name": "device_os",
-            "ty": "String"
-          }
-        ],
-        "returns": [],
-        "json_schema": null
+        ]
       }
-    ]
-  },
-  {
-    "name": "user",
-    "id": 2,
-    "endpoints": [
-      {
-        "name": "Foo",
-        "code": 20010,
-        "parameters": [],
-        "returns": [],
-        "json_schema": null
+    },
+    {
+      "Enum": {
+        "name": "recovery_question_category",
+        "variants": [
+          {
+            "name": "childhood",
+            "value": 0
+          },
+          {
+            "name": "education",
+            "value": 1
+          },
+          {
+            "name": "family",
+            "value": 2
+          },
+          {
+            "name": "favorite",
+            "value": 3
+          },
+          {
+            "name": "first",
+            "value": 4
+          },
+          {
+            "name": "personal",
+            "value": 5
+          },
+          {
+            "name": "pet",
+            "value": 6
+          },
+          {
+            "name": "work",
+            "value": 7
+          },
+          {
+            "name": "historical",
+            "value": 8
+          }
+        ]
       }
-    ]
-  },
-  {
-    "name": "admin",
-    "id": 3,
-    "endpoints": [
-      {
-        "name": "ListUsers",
-        "code": 30010,
-        "parameters": [
+    },
+    {
+      "Enum": {
+        "name": "service",
+        "variants": [
           {
-            "name": "offset",
-            "ty": "Int"
+            "name": "auth",
+            "value": 1
           },
           {
-            "name": "limit",
-            "ty": "Int"
+            "name": "user",
+            "value": 2
+          },
+          {
+            "name": "admin",
+            "value": 3
           }
-        ],
-        "returns": [
-          {
-            "name": "user_public_id",
-            "ty": "BigInt"
-          },
-          {
-            "name": "username",
-            "ty": "String"
-          },
-          {
-            "name": "email",
-            "ty": "String"
-          },
-          {
-            "name": "created_at",
-            "ty": "Int"
-          },
-          {
-            "name": "updated_at",
-            "ty": "Int"
-          }
-        ],
-        "json_schema": null
-      },
-      {
-        "name": "AssignRole",
-        "code": 30020,
-        "parameters": [
-          {
-            "name": "user_public_id",
-            "ty": "BigInt"
-          },
-          {
-            "name": "new_role",
-            "ty": "String"
-          }
-        ],
-        "returns": [
-          {
-            "name": "success",
-            "ty": "Boolean"
-          }
-        ],
-        "json_schema": null
+        ]
       }
-    ]
-  }
-]
+    }
+  ]
+}
