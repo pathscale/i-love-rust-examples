@@ -17,5 +17,7 @@ pg_exec2() {
 echo "CREATE DATABASE coldvaults;" | pg_exec
 
 pg_exec2 -f model.sql
+# run twice because of wrong dependencies
+pg_exec2 -f tbl.sql
 pg_exec2 -f tbl.sql
 pg_exec2 -f api.sql
