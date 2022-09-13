@@ -17,10 +17,11 @@ impl ToRust for Type {
             Type::Date => "u32".to_owned(), // TODO: resolve date
             Type::Int => "i32".to_owned(),
             Type::BigInt => "i64".to_owned(),
-            Type::Table(name, _) => name.clone(),
-            Type::DataTable(name, _) => name.clone(),
-            Type::Vec(fields) => {
-                format!("Vec<{}>", fields.to_rust_ref())
+            Type::Numeric => "f32".to_owned(),
+            Type::Object { name, .. } => name.clone(),
+            Type::DataTable { name, .. } => format!("Vec<{}>", name),
+            Type::Vec(ele) => {
+                format!("Vec<{}>", ele.to_rust_ref())
             }
             Type::Unit => "()".to_owned(),
             Type::Optional(t) => {
@@ -31,39 +32,22 @@ impl ToRust for Type {
             Type::Bytea => "Vec<u8>".to_owned(),
             Type::UUID => "uuid::Uuid".to_owned(),
             Type::Inet => "std::net::IpAddr".to_owned(),
-            Type::Enum(name, _) => format!("Enum{}", name.to_case(Case::Pascal),),
+            Type::Enum { name, .. } => format!("Enum{}", name.to_case(Case::Pascal),),
         }
     }
 
     fn to_rust_decl(&self) -> String {
         match self {
-            Type::Second => "u32".to_owned(),
-            Type::MilliSecond => "u64".to_owned(),
-            Type::Date => "u32".to_owned(), // TODO: resolve date
-            Type::Int => "i32".to_owned(),
-            Type::BigInt => "i64".to_owned(),
-            Type::Table(name, fields) => {
+            Type::Object { name, fields } => {
                 let mut fields = fields
                     .iter()
                     .map(|x| format!("pub {}: {}", x.name, x.ty.to_rust_ref()));
                 format!("pub struct {} {{{}}}", name, fields.join(","))
             }
-            Type::DataTable(_, _) => {
-                todo!()
-            }
-            Type::Vec(fields) => {
-                format!("Vec<{}>", fields.to_rust_ref())
-            }
-            Type::Unit => "()".to_owned(),
-            Type::Optional(t) => {
-                format!("Option<{}>", t.to_rust_ref())
-            }
-            Type::Boolean => "bool".to_owned(),
-            Type::String => "String".to_owned(),
-            Type::Bytea => "Vec<u8>".to_owned(),
-            Type::UUID => "uuid::Uuid".to_owned(),
-            Type::Inet => "std::net::IpAddr".to_owned(),
-            Type::Enum(name, fields) => {
+            Type::Enum {
+                name,
+                variants: fields,
+            } => {
                 let mut fields = fields.iter().map(|x| {
                     format!(
                         r#"#[postgres(name = "{}")]{} = {}"#,
@@ -79,24 +63,25 @@ impl ToRust for Type {
                     fields.join(",")
                 )
             }
+            x => x.to_rust_ref(),
         }
     }
 }
 
 pub fn get_parameter_type(this: &ProceduralFunction) -> Type {
-    Type::Table(
+    Type::object(
         format!("{}Req", this.name.to_case(Case::Pascal)),
         this.parameters.clone(),
     )
 }
 pub fn get_return_row_type(this: &ProceduralFunction) -> Type {
-    Type::Table(
+    Type::object(
         format!("{}RespRow", this.name.to_case(Case::Pascal)),
         this.returns.clone(),
     )
 }
 pub fn get_return_type(this: &ProceduralFunction) -> Type {
-    Type::Table(
+    Type::object(
         format!("{}Resp", this.name.to_case(Case::Pascal)),
         vec![Field::new(
             "rows",

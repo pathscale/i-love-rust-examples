@@ -14,7 +14,8 @@ impl ToSql for Type {
             Type::Date => "int".to_owned(), // TODO: fix things
             Type::Int => "int".to_owned(),
             Type::BigInt => "bigint".to_owned(),
-            Type::Table(_, fields) => {
+            Type::Numeric => "real".to_owned(),
+            Type::Object { fields, .. } => {
                 let fields = fields
                     .iter()
                     .map(|x| format!("\"{}\" {}", x.name, x.ty.to_sql()));
@@ -23,7 +24,7 @@ impl ToSql for Type {
                     fields.map(|x| format!("    {}", x)).join(",\n")
                 )
             }
-            Type::DataTable(_, _) => {
+            Type::DataTable { .. } => {
                 todo!()
             }
             Type::Vec(fields) => {
@@ -38,7 +39,7 @@ impl ToSql for Type {
             Type::Bytea => "bytea".to_owned(),
             Type::UUID => "uuid".to_owned(),
             Type::Inet => "inet".to_owned(),
-            Type::Enum(e, _) => format!("enum_{}", e),
+            Type::Enum { name, .. } => format!("enum_{}", name),
         }
     }
 }
@@ -57,7 +58,7 @@ impl ToSql for ProceduralFunction {
         let returns = if self.returns.len() == 0 {
             "void".to_owned()
         } else {
-            Type::Table("".to_string(), self.returns.clone()).to_sql()
+            Type::object("", self.returns.clone()).to_sql()
         };
         format!(
             "

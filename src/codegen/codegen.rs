@@ -8,7 +8,9 @@ use crate::sql::ToSql;
 use convert_case::{Case, Casing};
 use eyre::*;
 use itertools::Itertools;
+use model::service::Service;
 use model::types::*;
+use serde::*;
 use std::collections::HashMap;
 use std::env;
 use std::fs::{create_dir_all, File};
@@ -22,6 +24,22 @@ mod services;
 #[path = "../service/enums.rs"]
 mod enums;
 
+pub fn collect_rust_recursive_types(t: Type) -> Vec<Type> {
+    match t {
+        Type::Object { ref fields, .. } => {
+            let mut v = vec![t.clone()];
+            for x in fields {
+                v.extend(collect_rust_recursive_types(x.ty.clone()));
+            }
+            v
+        }
+        Type::DataTable { name, fields } => {
+            collect_rust_recursive_types(Type::object(name, fields))
+        }
+        Type::Vec(x) => collect_rust_recursive_types(*x),
+        _ => vec![],
+    }
+}
 pub fn gen_model_rs(dir: &str) -> Result<()> {
     let db_filename = format!("{}/model.rs", dir);
     let mut f = File::create(&db_filename)?;
@@ -40,20 +58,27 @@ use strum_macros::EnumString;
     for e in enums::get_enums() {
         write!(&mut f, "{}", e.to_rust_decl())?;
     }
-    f.flush()?;
-    write!(
-        &mut f,
-        "{}",
-        Type::Enum(
-            "service".to_owned(),
-            services::get_services()
-                .into_iter()
-                .map(|x| EnumVariant::new(x.name, x.id as _))
-                .collect()
-        )
-        .to_rust_decl()
-    )?;
 
+    for s in services::get_services() {
+        for e in s.endpoints {
+            let req = Type::object(format!("{}Request", e.name), e.parameters);
+            let resp = Type::object(format!("{}Response", e.name), e.returns);
+            let ss = vec![
+                collect_rust_recursive_types(req),
+                collect_rust_recursive_types(resp),
+            ]
+            .concat();
+            for s in ss {
+                write!(
+                    &mut f,
+                    r#"#[derive(Serialize, Deserialize, Debug)]
+                    #[serde(rename_all = "camelCase")]
+                    {}"#,
+                    s.to_rust_decl()
+                )?;
+            }
+        }
+    }
     drop(f);
     rustfmt(&db_filename)?;
 
@@ -63,24 +88,14 @@ pub fn gen_model_sql(root: &str) -> Result<()> {
     let db_filename = format!("{}/db/model.sql", root);
     let mut f = File::create(db_filename)?;
 
-    let mut enums = enums::get_enums();
-
-    enums.push(Type::Enum(
-        "service".to_owned(),
-        services::get_services()
-            .into_iter()
-            .map(|x| EnumVariant::new(x.name, x.id as _))
-            .collect(),
-    ));
-
-    for e in enums {
+    for e in enums::get_enums() {
         match e {
-            Type::Enum(name, field) => {
+            Type::Enum { name, variants } => {
                 writeln!(
                     &mut f,
                     "CREATE TYPE enum_{} AS ENUM ({});",
                     name,
-                    field
+                    variants
                         .into_iter()
                         .map(|x| format!("'{}'", x.name))
                         .join(", ")
@@ -183,11 +198,19 @@ pub fn gen_db_sql(root: &str) -> Result<()> {
 
     Ok(())
 }
+#[derive(Debug, Serialize, Deserialize)]
+struct Docs {
+    services: Vec<Service>,
+    enums: Vec<Type>,
+}
 pub fn gen_docs(root: &str) -> Result<()> {
-    let services = services::get_services();
+    let docs = Docs {
+        services: services::get_services(),
+        enums: enums::get_enums(),
+    };
     let docs_filename = format!("{}/docs/services.json", root);
     let mut docs_file = File::create(docs_filename)?;
-    serde_json::to_writer_pretty(&mut docs_file, &services)?;
+    serde_json::to_writer_pretty(&mut docs_file, &docs)?;
     Ok(())
 }
 

@@ -1,8 +1,18 @@
+use crate::services::get_services;
 use model::types::*;
 
+pub fn get_service_enum() -> Type {
+    Type::enum_(
+        "service".to_owned(),
+        get_services()
+            .iter()
+            .map(|s| EnumVariant::new(s.name.clone(), s.id as _))
+            .collect::<Vec<EnumVariant>>(),
+    )
+}
 pub fn get_enums() -> Vec<Type> {
     vec![
-        Type::Enum(
+        Type::enum_(
             "role".to_owned(),
             vec![
                 EnumVariant::new("guest", 0),
@@ -11,7 +21,7 @@ pub fn get_enums() -> Vec<Type> {
                 EnumVariant::new("developer", 3),
             ],
         ),
-        Type::Enum(
+        Type::enum_(
             "recovery_question_category".to_owned(),
             vec![
                 EnumVariant::new("childhood", 0),
@@ -25,5 +35,6 @@ pub fn get_enums() -> Vec<Type> {
                 EnumVariant::new("historical", 8),
             ],
         ),
+        get_service_enum(),
     ]
 }

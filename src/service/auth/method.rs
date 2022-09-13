@@ -1,7 +1,6 @@
-use crate::endpoints::*;
 use eyre::*;
 use gen::database::*;
-use gen::model::EnumService;
+use gen::model::*;
 use lib::toolbox::*;
 use lib::ws::*;
 use reqwest::StatusCode;
@@ -14,8 +13,8 @@ use uuid::Uuid;
 pub struct SignupHandler;
 
 impl RequestHandler for SignupHandler {
-    type Request = AuthSignupRequest;
-    type Response = AuthSignupResponse;
+    type Request = SignupRequest;
+    type Response = SignupResponse;
 
     fn handle(
         &self,
@@ -65,7 +64,7 @@ impl RequestHandler for SignupHandler {
             })
             .await?;
 
-            Ok(AuthSignupResponse {
+            Ok(SignupResponse {
                 username: username.to_string(),
                 user_public_id: public_id,
             })
@@ -76,8 +75,8 @@ impl RequestHandler for SignupHandler {
 pub struct LoginHandler;
 
 impl RequestHandler for LoginHandler {
-    type Request = AuthLoginRequest;
-    type Response = AuthLoginResponse;
+    type Request = LoginRequest;
+    type Response = LoginResponse;
 
     fn handle(
         &self,
@@ -112,7 +111,7 @@ impl RequestHandler for LoginHandler {
                 .fun_auth_authenticate(FunAuthAuthenticateReq {
                     username: username.clone(),
                     password_hash: password_hash.clone(),
-                    service_code,
+                    service_code: service_code as _,
                     device_id: req.params.device_id.clone(),
                     device_os: req.params.device_os.clone(),
                     ip_address: conn.address.clone(),
@@ -125,10 +124,10 @@ impl RequestHandler for LoginHandler {
                 user_id: row.user_id,
                 user_token: user_token.clone(),
                 admin_token: admin_token.clone(),
-                service_code,
+                service_code: service_code as _,
             })
             .await?;
-            Ok(AuthLoginResponse {
+            Ok(LoginResponse {
                 username: username.clone(),
                 user_public_id: row.user_public_id,
                 user_token: user_token.to_string(),
@@ -148,8 +147,8 @@ pub struct AuthorizeHandler {
     pub accept_service: EnumService,
 }
 impl RequestHandler for AuthorizeHandler {
-    type Request = AuthAuthorizeRequest;
-    type Response = AuthAuthorizeResponse;
+    type Request = AuthorizeRequest;
+    type Response = AuthorizeResponse;
 
     fn handle(
         &self,
@@ -188,7 +187,7 @@ impl RequestHandler for AuthorizeHandler {
             conn.user_id
                 .store(auth_data.user_id as _, Ordering::Relaxed);
             conn.role.store(auth_data.role as _, Ordering::Relaxed);
-            Ok(AuthAuthorizeResponse { success: true })
+            Ok(AuthorizeResponse { success: true })
         })
     }
 }

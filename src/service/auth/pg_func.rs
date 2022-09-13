@@ -191,14 +191,14 @@ END
             vec![
                 Field::new("username", Type::String),
                 Field::new("token", Type::UUID),
-                Field::new("service", Type::Enum("service".to_owned(), vec![])),
+                Field::new("service", Type::enum_ref("service")),
                 Field::new("device_id", Type::String),
                 Field::new("device_os", Type::String),
                 Field::new("ip_address", Type::Inet),
             ],
             vec![
                 Field::new("user_id", Type::BigInt),
-                Field::new("role", Type::Enum("role".to_owned(), vec![])),
+                Field::new("role", Type::enum_ref("role")),
             ],
             r#"
 DECLARE
@@ -314,10 +314,7 @@ END
             vec![
                 Field::new("question_id", Type::Int),
                 Field::new("content", Type::String),
-                Field::new(
-                    "category",
-                    Type::Enum("recovery_question_category".to_owned(), vec![]),
-                ),
+                Field::new("category", Type::enum_ref("recovery_question_category")),
             ],
             r#"
 BEGIN

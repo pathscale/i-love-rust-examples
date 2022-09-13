@@ -1,4 +1,4 @@
-use crate::endpoints::*;
+use gen::model::*;
 use lib::toolbox::*;
 use lib::ws::*;
 use std::sync::Arc;

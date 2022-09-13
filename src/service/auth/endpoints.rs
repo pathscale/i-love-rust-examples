@@ -1,59 +1,5 @@
 use model::endpoint::*;
 use model::types::{Field, Type};
-use serde::*;
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthSignupRequest {
-    pub username: String,
-    pub password: String,
-    pub email: String,
-    pub phone: String,
-    pub agreed_tos: bool,
-    pub agreed_privacy: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthSignupResponse {
-    pub username: String,
-    pub user_public_id: i64,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthLoginRequest {
-    pub username: String,
-    pub password: String,
-    pub service_code: i32,
-    pub device_id: String,
-    pub device_os: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthLoginResponse {
-    pub username: String,
-    pub user_public_id: i64,
-    pub user_token: String,
-    pub admin_token: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthAuthorizeRequest {
-    pub username: String,
-    pub token: String,
-    pub service_code: i32,
-    pub device_id: String,
-    pub device_os: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthAuthorizeResponse {
-    pub success: bool,
-}
 
 pub fn endpoint_auth_signup() -> EndpointSchema {
     EndpointSchema::new(
@@ -80,11 +26,16 @@ pub fn endpoint_auth_login() -> EndpointSchema {
         vec![
             Field::new("username", Type::String),
             Field::new("password", Type::String),
-            Field::new("service_code", Type::Int),
+            Field::new("service_code", Type::enum_ref("service")),
             Field::new("device_id", Type::String),
             Field::new("device_os", Type::String),
         ],
-        vec![],
+        vec![
+            Field::new("username", Type::String),
+            Field::new("user_public_id", Type::BigInt),
+            Field::new("user_token", Type::String),
+            Field::new("admin_token", Type::String),
+        ],
     )
 }
 pub fn endpoint_auth_authorize() -> EndpointSchema {
@@ -94,11 +45,11 @@ pub fn endpoint_auth_authorize() -> EndpointSchema {
         vec![
             Field::new("username", Type::String),
             Field::new("token", Type::String),
-            Field::new("service_code", Type::Int),
+            Field::new("service_code", Type::enum_ref("service")),
             Field::new("device_id", Type::String),
             Field::new("device_os", Type::String),
         ],
-        vec![],
+        vec![Field::new("success", Type::Boolean)],
     )
 }
 

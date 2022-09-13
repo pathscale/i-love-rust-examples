@@ -1,6 +1,6 @@
-use crate::endpoints::*;
 use eyre::Context;
 use gen::database::*;
+use gen::model::*;
 use lib::toolbox::*;
 use lib::ws::*;
 use std::sync::Arc;

@@ -53,3 +53,89 @@ pub enum EnumService {
     #[postgres(name = "admin")]
     Admin = 3,
 }
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+    pub service_code: EnumService,
+    pub device_id: String,
+    pub device_os: String,
+}
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct LoginResponse {
+    pub username: String,
+    pub user_public_id: i64,
+    pub user_token: String,
+    pub admin_token: String,
+}
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SignupRequest {
+    pub username: String,
+    pub password: String,
+    pub email: String,
+    pub phone: String,
+    pub agreed_tos: bool,
+    pub agreed_privacy: bool,
+}
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SignupResponse {
+    pub username: String,
+    pub user_public_id: i64,
+}
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthorizeRequest {
+    pub username: String,
+    pub token: String,
+    pub service_code: EnumService,
+    pub device_id: String,
+    pub device_os: String,
+}
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthorizeResponse {
+    pub success: bool,
+}
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FooRequest {}
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FooResponse {
+    pub foo: bool,
+}
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListUsersRequest {
+    pub offset: i32,
+    pub limit: i32,
+}
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListUsersResponse {
+    pub users: Vec<ListUsersResponseRow>,
+}
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListUsersResponseRow {
+    pub user_public_id: i64,
+    pub username: String,
+    pub email: String,
+    pub created_at: i32,
+    pub updated_at: i32,
+}
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AssignRoleRequest {
+    pub user_public_id: i64,
+    pub new_role: String,
+}
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AssignRoleResponse {
+    pub success: bool,
+}

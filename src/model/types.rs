@@ -17,10 +17,10 @@ impl Field {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EnumVariant {
     pub name: String,
-    pub value: i32,
+    pub value: i64,
 }
 impl EnumVariant {
-    pub fn new(name: impl Into<String>, value: i32) -> Self {
+    pub fn new(name: impl Into<String>, value: i64) -> Self {
         Self {
             name: name.into(),
             value,
@@ -34,17 +34,59 @@ pub enum Type {
     Date,
     Int,
     BigInt,
+    Numeric,
     Boolean,
     String,
     Bytea,
     UUID,
     Inet,
-    Table(String, Vec<Field>),
-    DataTable(String, Vec<Field>),
+    Object {
+        name: String,
+        fields: Vec<Field>,
+    },
+    DataTable {
+        name: String,
+        fields: Vec<Field>,
+    },
     Vec(Box<Type>),
     Unit,
     Optional(Box<Type>),
-    Enum(String, Vec<EnumVariant>),
+    Enum {
+        name: String,
+        variants: Vec<EnumVariant>,
+    },
+}
+impl Type {
+    pub fn object(name: impl Into<String>, fields: Vec<Field>) -> Self {
+        Self::Object {
+            name: name.into(),
+            fields,
+        }
+    }
+    pub fn data_table(name: impl Into<String>, fields: Vec<Field>) -> Self {
+        Self::DataTable {
+            name: name.into(),
+            fields,
+        }
+    }
+    pub fn vec(ty: Type) -> Self {
+        Self::Vec(Box::new(ty))
+    }
+    pub fn optional(ty: Type) -> Self {
+        Self::Optional(Box::new(ty))
+    }
+    pub fn enum_ref(name: impl Into<String>) -> Self {
+        Self::Enum {
+            name: name.into(),
+            variants: vec![],
+        }
+    }
+    pub fn enum_(name: impl Into<String>, fields: Vec<EnumVariant>) -> Self {
+        Self::Enum {
+            name: name.into(),
+            variants: fields,
+        }
+    }
 }
 #[derive(Clone, Debug)]
 pub struct ProceduralFunction {
