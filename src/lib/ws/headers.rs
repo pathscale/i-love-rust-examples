@@ -126,8 +126,8 @@ impl AuthController for EndpointAuthController {
                                         .into(),
                                 ),
                                 Type::Enum { name, .. } if name == "service" => match *value {
-                                    "1" => serde_json::Value::String("User".to_string()),
-                                    "2" => serde_json::Value::String("Admin".to_string()),
+                                    "2" => serde_json::Value::String("User".to_string()),
+                                    "3" => serde_json::Value::String("Admin".to_string()),
                                     x => serde_json::Value::String(x.to_string()),
                                 },
                                 Type::Enum { .. } => serde_json::Value::String(value.to_string()),
