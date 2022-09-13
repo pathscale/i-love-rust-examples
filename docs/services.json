@@ -44,6 +44,14 @@
             "ty": "String"
           },
           {
+            "name": "email",
+            "ty": "String"
+          },
+          {
+            "name": "phone",
+            "ty": "String"
+          },
+          {
             "name": "agreed_tos",
             "ty": "Boolean"
           },

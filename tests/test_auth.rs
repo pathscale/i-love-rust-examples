@@ -1,6 +1,8 @@
 pub mod tools;
 use crate::endpoints::*;
 use eyre::*;
+use gen::model::EnumService;
+use lib::utils::encode_header;
 use tools::*;
 
 #[path = "../src/service/auth/endpoints.rs"]
@@ -8,26 +10,43 @@ pub mod endpoints;
 #[tokio::test]
 async fn test_bad_login() -> Result<()> {
     let mut client = get_ws_auth_client("").await?;
-    let res: AuthLoginResp = client.recv_resp().await?;
+    let res: AuthLoginResponse = client.recv_resp().await?;
     println!("{:?}", res);
     Ok(())
 }
 
 #[tokio::test]
 async fn test_login() -> Result<()> {
-    let mut client = get_ws_auth_client(
-        "0login, 1pepe_pablo, 2AHJQ6X1H68SK8D9P6WW0, 32, 424787297130491616, 5android",
-    )
+    let mut client = get_ws_auth_client(&encode_header(
+        AuthLoginRequest {
+            username: "pepe_pablo".to_string(),
+            password: "AHJQ6X1H68SK8D9P6WW0".to_string(),
+            service_code: EnumService::User as _,
+            device_id: "24787297130491616".to_string(),
+            device_os: "android".to_string(),
+        },
+        endpoint_auth_login(),
+    )?)
     .await?;
-    let res: AuthLoginResp = client.recv_resp().await?;
+    let res: AuthLoginResponse = client.recv_resp().await?;
     println!("{:?}", res);
     Ok(())
 }
 
 #[tokio::test]
 async fn test_signup() -> Result<()> {
-    let mut client =
-        get_ws_auth_client("0signup, 1pepe_pablo, 2AHJQ6X1H68SK8D9P6WW0, 3true, 4true").await?;
+    let mut client = get_ws_auth_client(&encode_header(
+        AuthSignupRequest {
+            username: "pepe_pablo".to_string(),
+            password: "AHJQ6X1H68SK8D9P6WW0".to_string(),
+            email: "pepe_pablo@defi.digital".to_string(),
+            phone: "+00123456".to_string(),
+            agreed_tos: true,
+            agreed_privacy: true,
+        },
+        endpoint_auth_signup(),
+    )?)
+    .await?;
     let res: AuthSignupResponse = client.recv_resp().await?;
     println!("{:?}", res);
     Ok(())

@@ -53,6 +53,8 @@ impl RequestHandler for SignupHandler {
             db.fun_auth_signup(FunAuthSignupReq {
                 public_id,
                 username: username.to_string(),
+                email: req.params.email,
+                phone: req.params.phone,
                 password_hash,
                 password_salt: salt.as_bytes().to_vec(),
                 age: 0,
@@ -74,8 +76,8 @@ impl RequestHandler for SignupHandler {
 pub struct LoginHandler;
 
 impl RequestHandler for LoginHandler {
-    type Request = AuthLoginReq;
-    type Response = AuthLoginResp;
+    type Request = AuthLoginRequest;
+    type Response = AuthLoginResponse;
 
     fn handle(
         &self,
@@ -126,7 +128,7 @@ impl RequestHandler for LoginHandler {
                 service_code,
             })
             .await?;
-            Ok(AuthLoginResp {
+            Ok(AuthLoginResponse {
                 username: username.clone(),
                 user_public_id: row.user_public_id,
                 user_token: user_token.to_string(),
@@ -146,8 +148,8 @@ pub struct AuthorizeHandler {
     pub accept_service: EnumService,
 }
 impl RequestHandler for AuthorizeHandler {
-    type Request = AuthAuthorizeReq;
-    type Response = AuthAuthorizeResp;
+    type Request = AuthAuthorizeRequest;
+    type Response = AuthAuthorizeResponse;
 
     fn handle(
         &self,
@@ -160,7 +162,7 @@ impl RequestHandler for AuthorizeHandler {
         let accept_srv = self.accept_service;
         toolbox.spawn_response(ctx, async move {
             let srv = num::FromPrimitive::from_u32(req.params.service_code as u32)
-                .ok_or_else(|| eyre!("Invalid service code"))?;
+                .with_context(|| format!("Invalid service code"))?;
 
             if srv != accept_srv {
                 bail!(CustomError::new(
@@ -186,7 +188,7 @@ impl RequestHandler for AuthorizeHandler {
             conn.user_id
                 .store(auth_data.user_id as _, Ordering::Relaxed);
             conn.role.store(auth_data.role as _, Ordering::Relaxed);
-            Ok(AuthAuthorizeResp { success: true })
+            Ok(AuthAuthorizeResponse { success: true })
         })
     }
 }

@@ -20,8 +20,8 @@ pub fn get_admin_pg_func() -> Vec<ProceduralFunction> {
             r#"
 BEGIN
     RETURN QUERY SELECT
-        u.user_id,
-        u.user_public_id,
+        u.pkey_id,
+        u.public_id,
         u.email,
         u.username,
         u.role,
@@ -44,13 +44,13 @@ END
             vec![],
             r#"
 DECLARE
-    operator_user enum_role; 
+    _operator_role enum_role;
 BEGIN
-    SELECT role FROM tbl.user WHERE user_id = a_operator_user_id INTO STRICT operator_role;
-    IF operator_role <> 'admin' THEN
-        RAISE SQLSTATE R000S; -- InvalidRole
+    SELECT role FROM tbl.user WHERE pkey_id = a_operator_user_id INTO STRICT _operator_role;
+    IF _operator_role <> 'admin' THEN
+        RAISE SQLSTATE 'R000S'; -- InvalidRole
     END IF;
-    UPDATE tbl.user SET role = a_new_role WHERE user_public_id = a_user_public_id;
+    UPDATE tbl.user SET role = a_new_role WHERE public_id = a_user_public_id;
 END
         "#,
         ),

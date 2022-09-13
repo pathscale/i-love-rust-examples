@@ -7,6 +7,8 @@ use serde::*;
 pub struct AuthSignupRequest {
     pub username: String,
     pub password: String,
+    pub email: String,
+    pub phone: String,
     pub agreed_tos: bool,
     pub agreed_privacy: bool,
 }
@@ -20,7 +22,7 @@ pub struct AuthSignupResponse {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct AuthLoginReq {
+pub struct AuthLoginRequest {
     pub username: String,
     pub password: String,
     pub service_code: i32,
@@ -30,7 +32,7 @@ pub struct AuthLoginReq {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct AuthLoginResp {
+pub struct AuthLoginResponse {
     pub username: String,
     pub user_public_id: i64,
     pub user_token: String,
@@ -39,7 +41,7 @@ pub struct AuthLoginResp {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct AuthAuthorizeReq {
+pub struct AuthAuthorizeRequest {
     pub username: String,
     pub token: String,
     pub service_code: i32,
@@ -49,7 +51,7 @@ pub struct AuthAuthorizeReq {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct AuthAuthorizeResp {
+pub struct AuthAuthorizeResponse {
     pub success: bool,
 }
 
@@ -60,6 +62,8 @@ pub fn endpoint_auth_signup() -> EndpointSchema {
         vec![
             Field::new("username", Type::String),
             Field::new("password", Type::String),
+            Field::new("email", Type::String),
+            Field::new("phone", Type::String),
             Field::new("agreed_tos", Type::Boolean),
             Field::new("agreed_privacy", Type::Boolean),
         ],

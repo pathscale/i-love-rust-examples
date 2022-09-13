@@ -20,6 +20,8 @@ impl From<SimpleDbClient> for DbClient {
 pub struct FunAuthSignupReq {
     pub public_id: i64,
     pub username: String,
+    pub email: String,
+    pub phone: String,
     pub password_hash: Vec<u8>,
     pub password_salt: Vec<u8>,
     pub age: i32,
@@ -37,7 +39,7 @@ pub struct FunAuthSignupResp {
 impl DbClient {
     #[allow(unused_variables)]
     pub async fn fun_auth_signup(&self, req: FunAuthSignupReq) -> Result<FunAuthSignupResp> {
-        let rows = self.client.query("SELECT * FROM api.fun_auth_signup(a_public_id => $1::bigint, a_username => $2::varchar, a_password_hash => $3::bytea, a_password_salt => $4::bytea, a_age => $5::int, a_preferred_language => $6::varchar, a_agreed_tos => $7::boolean, a_agreed_privacy => $8::boolean, a_ip_address => $9::inet);", &[&req.public_id, &req.username, &req.password_hash, &req.password_salt, &req.age, &req.preferred_language, &req.agreed_tos, &req.agreed_privacy, &req.ip_address]).await?;
+        let rows = self.client.query("SELECT * FROM api.fun_auth_signup(a_public_id => $1::bigint, a_username => $2::varchar, a_email => $3::varchar, a_phone => $4::varchar, a_password_hash => $5::bytea, a_password_salt => $6::bytea, a_age => $7::int, a_preferred_language => $8::varchar, a_agreed_tos => $9::boolean, a_agreed_privacy => $10::boolean, a_ip_address => $11::inet);", &[&req.public_id, &req.username, &req.email, &req.phone, &req.password_hash, &req.password_salt, &req.age, &req.preferred_language, &req.agreed_tos, &req.agreed_privacy, &req.ip_address]).await?;
         let mut resp = FunAuthSignupResp {
             rows: Vec::with_capacity(rows.len()),
         };

@@ -15,10 +15,13 @@ impl ToSql for Type {
             Type::Int => "int".to_owned(),
             Type::BigInt => "bigint".to_owned(),
             Type::Table(_, fields) => {
-                let mut fields = fields
+                let fields = fields
                     .iter()
-                    .map(|x| format!("{} {}", x.name, x.ty.to_sql()));
-                format!("table (\n{}\n)", fields.join(",\n"))
+                    .map(|x| format!("\"{}\" {}", x.name, x.ty.to_sql()));
+                format!(
+                    "table (\n{}\n)",
+                    fields.map(|x| format!("    {}", x)).join(",\n")
+                )
             }
             Type::DataTable(_, _) => {
                 todo!()

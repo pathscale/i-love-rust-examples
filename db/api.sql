@@ -1,8 +1,8 @@
 CREATE SCHEMA IF NOT EXISTS api;
 
-CREATE OR REPLACE FUNCTION api.fun_auth_signup(a_public_id bigint, a_username varchar, a_password_hash bytea, a_password_salt bytea, a_age int, a_preferred_language varchar, a_agreed_tos boolean, a_agreed_privacy boolean, a_ip_address inet)
+CREATE OR REPLACE FUNCTION api.fun_auth_signup(a_public_id bigint, a_username varchar, a_email varchar, a_phone varchar, a_password_hash bytea, a_password_salt bytea, a_age int, a_preferred_language varchar, a_agreed_tos boolean, a_agreed_privacy boolean, a_ip_address inet)
 RETURNS table (
-user_id bigint
+    "user_id" bigint
 )
 LANGUAGE plpgsql
 AS $$
@@ -19,6 +19,8 @@ BEGIN
   END IF;
   INSERT INTO tbl.user (public_id,
                        username,
+                       email,
+                       phone_number,
                        password_hash,
                        password_salt,
                        age,
@@ -28,6 +30,8 @@ BEGIN
                        last_ip)
   VALUES (a_public_id,
           a_username,
+          a_email,
+          a_phone,
           a_password_hash,
           a_password_salt,
           a_age,
@@ -44,8 +48,8 @@ $$;
 
 CREATE OR REPLACE FUNCTION api.fun_auth_authenticate(a_username varchar, a_password_hash bytea, a_service_code int, a_device_id varchar, a_device_os varchar, a_ip_address inet)
 RETURNS table (
-user_id bigint,
-user_public_id bigint
+    "user_id" bigint,
+    "user_public_id" bigint
 )
 LANGUAGE plpgsql
 AS $$
@@ -105,7 +109,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION api.fun_auth_get_password_salt(a_username varchar)
 RETURNS table (
-salt bytea
+    "salt" bytea
 )
 LANGUAGE plpgsql
 AS $$
@@ -170,8 +174,8 @@ $$;
 
 CREATE OR REPLACE FUNCTION api.fun_auth_authorize(a_username varchar, a_token uuid, a_service enum_service, a_device_id varchar, a_device_os varchar, a_ip_address inet)
 RETURNS table (
-user_id bigint,
-role enum_role
+    "user_id" bigint,
+    "role" enum_role
 )
 LANGUAGE plpgsql
 AS $$
@@ -282,9 +286,9 @@ $$;
 
 CREATE OR REPLACE FUNCTION api.fun_get_recovery_question_data()
 RETURNS table (
-question_id int,
-content varchar,
-category enum_recovery_question_category
+    "question_id" int,
+    "content" varchar,
+    "category" enum_recovery_question_category
 )
 LANGUAGE plpgsql
 AS $$
@@ -320,7 +324,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION api.fun_auth_basic_authenticate(a_username varchar, a_device_id varchar, a_device_os varchar, a_ip_address inet)
 RETURNS table (
-user_id inet
+    "user_id" inet
 )
 LANGUAGE plpgsql
 AS $$
@@ -351,8 +355,8 @@ $$;
 
 CREATE OR REPLACE FUNCTION api.fun_auth_get_recovery_questions(a_user_id bigint)
 RETURNS table (
-question_id int,
-question varchar
+    "question_id" int,
+    "question" varchar
 )
 LANGUAGE plpgsql
 AS $$
@@ -429,21 +433,21 @@ $$;
 
 CREATE OR REPLACE FUNCTION api.fun_admin_list_users(a_offset int, a_limit int)
 RETURNS table (
-user_id bigint,
-user_public_id bigint,
-email varchar,
-username varchar,
-role enum_role,
-updated_at int,
-created_at int
+    "user_id" bigint,
+    "user_public_id" bigint,
+    "email" varchar,
+    "username" varchar,
+    "role" enum_role,
+    "updated_at" int,
+    "created_at" int
 )
 LANGUAGE plpgsql
 AS $$
     
 BEGIN
     RETURN QUERY SELECT
-        u.user_id,
-        u.user_public_id,
+        u.pkey_id,
+        u.public_id,
         u.email,
         u.username,
         u.role,
@@ -464,13 +468,13 @@ LANGUAGE plpgsql
 AS $$
     
 DECLARE
-    operator_user enum_role; 
+    _operator_role enum_role;
 BEGIN
-    SELECT role FROM tbl.user WHERE user_id = a_operator_user_id INTO STRICT operator_role;
-    IF operator_role <> 'admin' THEN
-        RAISE SQLSTATE R000S; -- InvalidRole
+    SELECT role FROM tbl.user WHERE pkey_id = a_operator_user_id INTO STRICT _operator_role;
+    IF _operator_role <> 'admin' THEN
+        RAISE SQLSTATE 'R000S'; -- InvalidRole
     END IF;
-    UPDATE tbl.user SET role = a_new_role WHERE user_public_id = a_user_public_id;
+    UPDATE tbl.user SET role = a_new_role WHERE public_id = a_user_public_id;
 END
         
 $$;
@@ -478,7 +482,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION api.AUTH_SERVICE()
 RETURNS table (
-code int
+    "code" int
 )
 LANGUAGE plpgsql
 AS $$
@@ -488,7 +492,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION api.USER_SERVICE()
 RETURNS table (
-code int
+    "code" int
 )
 LANGUAGE plpgsql
 AS $$
@@ -498,7 +502,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION api.ADMIN_SERVICE()
 RETURNS table (
-code int
+    "code" int
 )
 LANGUAGE plpgsql
 AS $$

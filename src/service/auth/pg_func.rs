@@ -7,6 +7,8 @@ pub fn get_auth_pg_func() -> Vec<ProceduralFunction> {
             vec![
                 Field::new("public_id", Type::BigInt),
                 Field::new("username", Type::String),
+                Field::new("email", Type::String),
+                Field::new("phone", Type::String),
                 Field::new("password_hash", Type::Bytea),
                 Field::new("password_salt", Type::Bytea),
                 Field::new("age", Type::Int),
@@ -29,6 +31,8 @@ BEGIN
   END IF;
   INSERT INTO tbl.user (public_id,
                        username,
+                       email,
+                       phone_number,
                        password_hash,
                        password_salt,
                        age,
@@ -38,6 +42,8 @@ BEGIN
                        last_ip)
   VALUES (a_public_id,
           a_username,
+          a_email,
+          a_phone,
           a_password_hash,
           a_password_salt,
           a_age,
