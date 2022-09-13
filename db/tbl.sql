@@ -188,6 +188,7 @@ CREATE TABLE tbl.transfer (
 
 CREATE INDEX udix_transaction_id on tbl.transfer (pkey_id ASC);
 
+
 -- Table: user
 CREATE TABLE tbl."user" (
                             pkey_id bigint  NOT NULL DEFAULT nextval( 'tbl.seq_user_id' ),
@@ -201,6 +202,7 @@ CREATE TABLE tbl."user" (
                             family_name varchar(128)  NULL,
                             given_name varchar(128)  NULL,
                             agreed_tos boolean  NOT NULL,
+                            agreed_privacy boolean  NOT NULL,
                             created_at oid  NOT NULL DEFAULT EXTRACT(EPOCH FROM (NOW()))::bigint,
                             updated_at oid  NOT NULL DEFAULT EXTRACT(EPOCH FROM (NOW()))::bigint,
                             email varchar(320)  NULL,
@@ -212,11 +214,15 @@ CREATE TABLE tbl."user" (
                             user_device_id uuid  NULL,
                             admin_device_id uuid  NULL,
                             password_reset_token uuid  NULL,
+                            reset_token_valid uuid NULL,
+                            user_token uuid NULL,
+                            admin_token uuid  NULL,
                             is_blocked boolean  NOT NULL DEFAULT false,
                             CONSTRAINT uidx_user_username UNIQUE (username) NOT DEFERRABLE  INITIALLY IMMEDIATE,
                             CONSTRAINT uidx_user_public_id UNIQUE (public_id) NOT DEFERRABLE  INITIALLY IMMEDIATE,
                             CONSTRAINT user_pk PRIMARY KEY (pkey_id)
 );
+
 
 -- Table: vault_metadata
 CREATE TABLE tbl.vault_metadata (
