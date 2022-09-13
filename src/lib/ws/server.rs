@@ -5,8 +5,6 @@ use futures::stream::{SplitSink, SplitStream};
 use futures::SinkExt;
 use futures::StreamExt;
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::BufReader;
 use std::net::SocketAddr;
 use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
@@ -346,35 +344,19 @@ impl WebsocketServer {
 // Load public certificate from file.
 fn load_certs(filename: &str) -> Result<Vec<rustls::Certificate>> {
     // Open certificate file.
-    let certfile = File::open(filename).map_err(|e| eyre!("failed to open {}: {}", filename, e))?;
-    let mut reader = BufReader::new(certfile);
+    let certfile = fs::read(filename).with_context(|| format!("failed to open {}", filename))?;
 
-    // Load and return certificate.
-    // let _certs =
-    //     rustls_pemfile::certs(&mut reader).map_err(|_| eyre!("failed to load certificate"))?;
-    
-    let pub_key = parse(fs::read(filename).unwrap()).unwrap().contents;
+    let pub_key = parse(certfile)?.contents;
 
-    Ok(vec!(rustls::Certificate(pub_key)))
-    
-    //Ok(certs.into_iter().map(rustls::Certificate).collect())
+    Ok(vec![rustls::Certificate(pub_key)])
 }
 
 // Load private key from file.
 fn load_private_key(filename: &str) -> Result<rustls::PrivateKey> {
     // Open keyfile.
-    let keyfile = File::open(filename).map_err(|e| eyre!("failed to open {}: {}", filename, e))?;
-    
-    let mut reader = BufReader::new(keyfile);
+    let keyfile = fs::read(filename).with_context(|| format!("failed to open {}", filename))?;
 
-    // Load and return a single private key.
-    // let _keys = rustls_pemfile::rsa_private_keys(&mut reader)
-    //     .map_err(|_| eyre!("failed to load private key"))?;
-    
-
-    let priv_key = parse(fs::read(filename).unwrap()).unwrap().contents;
-
-    //test_rustls_pem();
+    let priv_key = parse(keyfile)?.contents;
 
     if priv_key.len() == 0 {
         bail!("expected a single private key");
@@ -382,4 +364,3 @@ fn load_private_key(filename: &str) -> Result<rustls::PrivateKey> {
 
     Ok(rustls::PrivateKey(priv_key))
 }
-
