@@ -29,10 +29,12 @@ pub fn encode_header<T: Serialize>(v: T, schema: EndpointSchema) -> Result<Strin
             s,
             ", {}{}",
             i + 1,
-            v.get(&key)
-                .with_context(|| format!("key: {}", key))?
-                .to_string()
-                .replace("\"", "")
+            urlencoding::encode(
+                &v.get(&key)
+                    .with_context(|| format!("key: {}", key))?
+                    .to_string()
+                    .replace("\"", "")
+            )
         )?;
     }
     Ok(s)
