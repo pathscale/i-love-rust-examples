@@ -16,14 +16,14 @@ impl RequestHandler for ListUsersHandler {
         toolbox: &Toolbox,
         ctx: RequestContext,
         _conn: Arc<Connection>,
-        req: WsRequestGeneric<Self::Request>,
+        req: Self::Request,
     ) {
         let db: DbClient = toolbox.get_db();
         toolbox.spawn_response(ctx, async move {
             let result = db
                 .fun_admin_list_users(FunAdminListUsersReq {
-                    offset: req.params.offset as _,
-                    limit: req.params.limit as _,
+                    offset: req.offset as _,
+                    limit: req.limit as _,
                 })
                 .await?;
 
@@ -55,19 +55,15 @@ impl RequestHandler for AssignRoleHandler {
         toolbox: &Toolbox,
         ctx: RequestContext,
         _conn: Arc<Connection>,
-        req: WsRequestGeneric<Self::Request>,
+        req: Self::Request,
     ) {
         let db: DbClient = toolbox.get_db();
         toolbox.spawn_response(ctx, async move {
             let result = db
                 .fun_admin_assign_role(FunAdminAssignRoleReq {
                     operator_user_id: _conn.get_user_id() as _,
-                    new_role: req
-                        .params
-                        .new_role
-                        .parse()
-                        .context("Failed to parse role")?,
-                    user_public_id: req.params.user_public_id,
+                    new_role: req.new_role.parse().context("Failed to parse role")?,
+                    user_public_id: req.user_public_id,
                 })
                 .await?;
             drop(result);
