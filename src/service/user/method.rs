@@ -14,7 +14,7 @@ impl RequestHandler for FooHandler {
         toolbox: &Toolbox,
         ctx: RequestContext,
         _conn: Arc<Connection>,
-        _req: WsRequestGeneric<Self::Request>,
+        _req: Self::Request,
     ) {
         toolbox.spawn_response(ctx, async move { Ok(FooResponse { foo: false }) });
     }

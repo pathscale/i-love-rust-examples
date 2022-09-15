@@ -1,7 +1,7 @@
 use eyre::*;
 
 use crate::toolbox::{RequestContext, Toolbox};
-use crate::ws::{Connection, RequestHandlerErased, WsEndpoint, WsRequest};
+use crate::ws::{Connection, RequestHandlerErased, WsEndpoint};
 use convert_case::Case;
 use convert_case::Casing;
 use dashmap::DashMap;
@@ -148,15 +148,11 @@ impl AuthController for EndpointAuthController {
                         connection_id: conn.connection_id,
                         user_id: 0,
                         seq: 0,
-                        method: 0,
+                        method: endpoint.schema.code,
                         log_id: conn.log_id,
                     },
                     conn,
-                    WsRequest {
-                        method: endpoint.schema.code,
-                        seq: 0,
-                        params: serde_json::Value::Object(params),
-                    },
+                    serde_json::Value::Object(params),
                 )
             });
             for t in tasks {

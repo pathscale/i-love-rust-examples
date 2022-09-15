@@ -245,7 +245,7 @@ impl WebsocketServer {
                     };
                     handler
                         .handler
-                        .handle(&self.toolbox, context, Arc::clone(&conn), req);
+                        .handle(&self.toolbox, context, Arc::clone(&conn), req.params);
                 }
                 Err(WsError::Protocol(ProtocolError::ResetWithoutClosingHandshake)) => {
                     info!(?addr, "Receive side terminated");

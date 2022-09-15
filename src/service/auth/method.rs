@@ -21,7 +21,7 @@ impl RequestHandler for SignupHandler {
         toolbox: &Toolbox,
         ctx: RequestContext,
         conn: Arc<Connection>,
-        req: WsRequestGeneric<Self::Request>,
+        req: Self::Request,
     ) {
         let db: DbClient = toolbox.get_db();
         toolbox.spawn_response(ctx, async move {
@@ -30,11 +30,11 @@ impl RequestHandler for SignupHandler {
                 .unwrap()
                 .as_nanos() as i64;
             let salt = Uuid::new_v4();
-            let password_hash = hash_password(&req.params.password, salt.as_bytes())?;
-            let username = req.params.username.trim().to_ascii_lowercase();
+            let password_hash = hash_password(&req.password, salt.as_bytes())?;
+            let username = req.username.trim().to_ascii_lowercase();
 
-            let agreed_tos = req.params.agreed_tos;
-            let agreed_privacy = req.params.agreed_privacy;
+            let agreed_tos = req.agreed_tos;
+            let agreed_privacy = req.agreed_privacy;
 
             if !agreed_tos {
                 bail!(CustomError::new(
@@ -52,8 +52,8 @@ impl RequestHandler for SignupHandler {
             db.fun_auth_signup(FunAuthSignupReq {
                 public_id,
                 username: username.to_string(),
-                email: req.params.email,
-                phone: req.params.phone,
+                email: req.email,
+                phone: req.phone,
                 password_hash,
                 password_salt: salt.as_bytes().to_vec(),
                 age: 0,
@@ -83,13 +83,13 @@ impl RequestHandler for LoginHandler {
         toolbox: &Toolbox,
         ctx: RequestContext,
         conn: Arc<Connection>,
-        req: WsRequestGeneric<Self::Request>,
+        req: Self::Request,
     ) {
         let db: DbClient = toolbox.get_db();
         toolbox.spawn_response(ctx, async move {
-            let username = req.params.username.trim().to_ascii_lowercase();
-            let service_code = req.params.service_code;
-            let password = req.params.password;
+            let username = req.username.trim().to_ascii_lowercase();
+            let service_code = req.service_code;
+            let password = req.password;
             let data = db
                 .fun_auth_get_password_salt(FunAuthGetPasswordSaltReq {
                     username: username.clone(),
@@ -112,8 +112,8 @@ impl RequestHandler for LoginHandler {
                     username: username.clone(),
                     password_hash: password_hash.clone(),
                     service_code: service_code as _,
-                    device_id: req.params.device_id.clone(),
-                    device_os: req.params.device_os.clone(),
+                    device_id: req.device_id.clone(),
+                    device_os: req.device_os.clone(),
                     ip_address: conn.address.clone(),
                 })
                 .await?;
@@ -155,12 +155,12 @@ impl RequestHandler for AuthorizeHandler {
         toolbox: &Toolbox,
         ctx: RequestContext,
         conn: Arc<Connection>,
-        req: WsRequestGeneric<Self::Request>,
+        req: Self::Request,
     ) {
         let db: DbClient = toolbox.get_db();
         let accept_srv = self.accept_service;
         toolbox.spawn_response(ctx, async move {
-            if req.params.service_code != accept_srv {
+            if req.service_code != accept_srv {
                 bail!(CustomError::new(
                     StatusCode::FORBIDDEN,
                     format!(
@@ -171,11 +171,11 @@ impl RequestHandler for AuthorizeHandler {
             }
             let auth_data = db
                 .fun_auth_authorize(FunAuthAuthorizeReq {
-                    username: req.params.username.to_string(),
-                    token: Uuid::from_str(&req.params.token)?,
-                    service: req.params.service_code,
-                    device_id: req.params.device_id,
-                    device_os: req.params.device_os,
+                    username: req.username.to_string(),
+                    token: Uuid::from_str(&req.token)?,
+                    service: req.service_code,
+                    device_id: req.device_id,
+                    device_os: req.device_os,
                     ip_address: conn.address,
                 })
                 .await?;

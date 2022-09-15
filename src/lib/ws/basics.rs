@@ -6,6 +6,7 @@ use model::endpoint::EndpointSchema;
 use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::*;
+use serde_json::Value;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::sync::atomic::{AtomicI64, AtomicU32};
@@ -115,7 +116,7 @@ pub struct WsEndpoint {
     pub handler: Arc<dyn RequestHandlerErased>,
 }
 pub trait RequestHandlerErased: Send + Sync {
-    fn handle(&self, toolbox: &Toolbox, ctx: RequestContext, conn: Arc<Connection>, req: WsRequest);
+    fn handle(&self, toolbox: &Toolbox, ctx: RequestContext, conn: Arc<Connection>, req: Value);
 }
 
 pub trait RequestHandler: Send + Sync {
@@ -126,19 +127,13 @@ pub trait RequestHandler: Send + Sync {
         toolbox: &Toolbox,
         ctx: RequestContext,
         conn: Arc<Connection>,
-        req: WsRequestGeneric<Self::Request>,
+        req: Self::Request,
     );
 }
 
 impl<T: RequestHandler> RequestHandlerErased for T {
-    fn handle(
-        &self,
-        toolbox: &Toolbox,
-        ctx: RequestContext,
-        conn: Arc<Connection>,
-        req: WsRequest,
-    ) {
-        let data: T::Request = match serde_json::from_value(req.params) {
+    fn handle(&self, toolbox: &Toolbox, ctx: RequestContext, conn: Arc<Connection>, req: Value) {
+        let data: T::Request = match serde_json::from_value(req) {
             Ok(data) => data,
             Err(err) => {
                 toolbox.send(
@@ -148,11 +143,7 @@ impl<T: RequestHandler> RequestHandlerErased for T {
                 return;
             }
         };
-        let req1 = WsRequestGeneric {
-            method: req.method,
-            seq: req.seq,
-            params: data,
-        };
-        RequestHandler::handle(self, toolbox, ctx, conn, req1)
+
+        RequestHandler::handle(self, toolbox, ctx, conn, data)
     }
 }
