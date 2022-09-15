@@ -64,12 +64,12 @@ path = "src/service/lib.rs"
 
 [[bin]]
 name = "auth"
-path = "src/service/auth/auth.rs"
+path = "src/service/auth/main.rs"
 
 [[bin]]
 name = "user"
-path = "src/service/user/user.rs"
+path = "src/service/user/main.rs"
 
 [[bin]]
 name = "admin"
-path = "src/service/admin/admin.rs"
+path = "src/service/admin/main.rs"
