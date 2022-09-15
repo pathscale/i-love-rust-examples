@@ -1,7 +1,7 @@
 # i-love-rust-examples
 This is a async websocket server template, with nice codegen included. Every tool required from Data Access Layer to backend endpoints are generated without user intervention.
 
-This project is a micro service implementation. 
+This project is a microservice implementation. 
 
 ## How to build
 

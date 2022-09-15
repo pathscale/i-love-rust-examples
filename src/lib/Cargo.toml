@@ -15,14 +15,12 @@ tracing = "*"
 tracing-subscriber = { version = "*", features = ["env-filter"] }
 byteorder = "*"
 hex = "*"
-daemonize = "*"
-ctrlc = "*"
 dashmap = "*"
 rayon = "*"
 tokio = { version = "*", features = ["full"] }
 crossbeam = "*"
 nonzero_ext = "*"
-reqwest = { version = "*", features = ["serde_json", "json"] }
+reqwest = { version = "*", default-features = false, features = ["rustls-tls", "serde_json", "json"] }
 governor = "*"
 tokio-tungstenite = { version = "*", features = [] }
 itertools = "*"

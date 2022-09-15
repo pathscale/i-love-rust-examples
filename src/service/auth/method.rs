@@ -160,10 +160,7 @@ impl RequestHandler for AuthorizeHandler {
         let db: DbClient = toolbox.get_db();
         let accept_srv = self.accept_service;
         toolbox.spawn_response(ctx, async move {
-            let srv = num::FromPrimitive::from_u32(req.params.service_code as u32)
-                .with_context(|| format!("Invalid service code"))?;
-
-            if srv != accept_srv {
+            if req.params.service_code != accept_srv {
                 bail!(CustomError::new(
                     StatusCode::FORBIDDEN,
                     format!(
@@ -176,7 +173,7 @@ impl RequestHandler for AuthorizeHandler {
                 .fun_auth_authorize(FunAuthAuthorizeReq {
                     username: req.params.username.to_string(),
                     token: Uuid::from_str(&req.params.token)?,
-                    service: srv,
+                    service: req.params.service_code,
                     device_id: req.params.device_id,
                     device_os: req.params.device_os,
                     ip_address: conn.address,
