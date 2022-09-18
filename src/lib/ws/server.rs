@@ -19,16 +19,16 @@ use tokio_tungstenite::WebSocketStream;
 use tracing::*;
 
 use crate::config::AppConfig;
+use crate::handler::*;
 use crate::toolbox::{RequestContext, Toolbox};
 use crate::utils::{get_conn_id, get_log_id};
-use crate::ws::basics::{Connection, RequestHandlerErased, WsRequest};
-use crate::ws::{
-    request_error_to_resp, AuthController, SimpleAuthContoller, VerifyProtocol, WsEndpoint,
-    WsResponse,
-};
+use crate::ws::basics::{Connection, WsRequest};
+use crate::ws::request_error_to_resp;
+use crate::ws::{AuthController, SimpleAuthContoller, VerifyProtocol, WsEndpoint, WsResponse};
 use model::endpoint::EndpointSchema;
 use pem::parse;
 use std::fs;
+
 pub struct WsStream<S> {
     ws_sink: SplitSink<WebSocketStream<S>, Message>,
     conn: Arc<Connection>,
@@ -73,6 +73,13 @@ fn wrap_ws_error<T>(err: Result<T, WsError>) -> Result<T> {
     err.map_err(|x| eyre!(x))
 }
 
+fn check_name(cat: &str, be_name: &str, should_name: &str) -> Result<()> {
+    if !be_name.contains(&should_name) {
+        bail!("{} name should be {} but got {}", cat, should_name, be_name);
+    } else {
+        Ok(())
+    }
+}
 impl WebsocketServer {
     pub fn new(config: AppConfig) -> Self {
         Self {
@@ -89,11 +96,17 @@ impl WebsocketServer {
     pub fn get_toolbox(&self) -> Toolbox {
         self.toolbox.clone()
     }
-    pub fn add_handler(
-        &mut self,
-        schema: EndpointSchema,
-        handler: impl RequestHandlerErased + 'static,
-    ) {
+    pub fn add_handler<T: RequestHandler + 'static>(&mut self, schema: EndpointSchema, handler: T) {
+        let handler_name = std::any::type_name::<T>();
+        let should_handler_name = format!("{}Handler", schema.name);
+        check_name("Handler", handler_name, &should_handler_name).unwrap();
+        let request_name = std::any::type_name::<T::Request>();
+        let should_req_name = format!("{}Request", schema.name);
+        check_name("Request", request_name, &should_req_name).unwrap();
+        let response_name = std::any::type_name::<T::Response>();
+        let should_resp_name = format!("{}Response", schema.name);
+        check_name("Response", response_name, &should_resp_name).unwrap();
+
         self.add_handler_erased(schema, Arc::new(handler))
     }
     pub fn add_handler_erased(

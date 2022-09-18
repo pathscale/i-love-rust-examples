@@ -18,6 +18,7 @@ pub fn get_conn_id() -> u32 {
         .unwrap()
         .as_nanos() as _
 }
+
 pub fn encode_header<T: Serialize>(v: T, schema: EndpointSchema) -> Result<String> {
     let mut s = String::new();
     write!(s, "0{}", schema.name.to_ascii_lowercase())?;

@@ -26,10 +26,10 @@ pub struct CustomError {
     pub reason: String,
 }
 impl CustomError {
-    pub fn new(code: impl Into<ErrorCode>, reason: String) -> Self {
+    pub fn new(code: impl Into<ErrorCode>, reason: impl Into<String>) -> Self {
         Self {
             code: code.into(),
-            reason,
+            reason: reason.into(),
         }
     }
     pub fn from_sql_error(err: &str, msg: impl Display) -> Result<Self> {

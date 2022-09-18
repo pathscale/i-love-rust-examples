@@ -1,7 +1,8 @@
 use eyre::*;
 
+use crate::handler::RequestHandlerErased;
 use crate::toolbox::{RequestContext, Toolbox};
-use crate::ws::{Connection, RequestHandlerErased, WsEndpoint};
+use crate::ws::{Connection, WsEndpoint};
 use convert_case::Case;
 use convert_case::Casing;
 use dashmap::DashMap;

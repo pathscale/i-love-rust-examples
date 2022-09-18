@@ -1,12 +1,10 @@
 use crate::error_code::ErrorCode;
+use crate::handler::RequestHandlerErased;
 use crate::log::LogLevel;
-use crate::toolbox::{RequestContext, Toolbox};
+use crate::toolbox::RequestContext;
 use eyre::*;
 use model::endpoint::EndpointSchema;
-use reqwest::StatusCode;
-use serde::de::DeserializeOwned;
 use serde::*;
-use serde_json::Value;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::sync::atomic::{AtomicI64, AtomicU32};
@@ -85,6 +83,11 @@ pub enum WsResponseGeneric<Resp> {
 
 pub type WsResponse = WsResponseGeneric<serde_json::Value>;
 
+pub struct WsEndpoint {
+    pub schema: EndpointSchema,
+    pub handler: Arc<dyn RequestHandlerErased>,
+}
+
 pub fn internal_error_to_resp(ctx: &RequestContext, code: ErrorCode, err: Error) -> WsResponse {
     let log_id = ctx.log_id;
     error!(?log_id, "Internal error: {:?}", err);
@@ -95,6 +98,7 @@ pub fn internal_error_to_resp(ctx: &RequestContext, code: ErrorCode, err: Error)
         reason: format!("Internal error: log_id={}", log_id),
     })
 }
+
 pub fn request_error_to_resp<E: Display + Debug>(
     ctx: &RequestContext,
     code: ErrorCode,
@@ -109,41 +113,4 @@ pub fn request_error_to_resp<E: Display + Debug>(
         seq: ctx.seq,
         reason: format!("Request error log_id={}: {}", log_id, err),
     })
-}
-
-pub struct WsEndpoint {
-    pub schema: EndpointSchema,
-    pub handler: Arc<dyn RequestHandlerErased>,
-}
-pub trait RequestHandlerErased: Send + Sync {
-    fn handle(&self, toolbox: &Toolbox, ctx: RequestContext, conn: Arc<Connection>, req: Value);
-}
-
-pub trait RequestHandler: Send + Sync {
-    type Request: DeserializeOwned;
-    type Response: Serialize + 'static;
-    fn handle(
-        &self,
-        toolbox: &Toolbox,
-        ctx: RequestContext,
-        conn: Arc<Connection>,
-        req: Self::Request,
-    );
-}
-
-impl<T: RequestHandler> RequestHandlerErased for T {
-    fn handle(&self, toolbox: &Toolbox, ctx: RequestContext, conn: Arc<Connection>, req: Value) {
-        let data: T::Request = match serde_json::from_value(req) {
-            Ok(data) => data,
-            Err(err) => {
-                toolbox.send(
-                    &ctx,
-                    request_error_to_resp(&ctx, StatusCode::BAD_REQUEST.into(), err),
-                );
-                return;
-            }
-        };
-
-        RequestHandler::handle(self, toolbox, ctx, conn, data)
-    }
 }

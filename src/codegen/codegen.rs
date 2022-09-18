@@ -40,6 +40,21 @@ pub fn collect_rust_recursive_types(t: Type) -> Vec<Type> {
         _ => vec![],
     }
 }
+
+pub fn check_endpoint_codes() -> Result<()> {
+    let mut codes = HashMap::new();
+    for s in services::get_services() {
+        for e in s.endpoints {
+            let code = e.code;
+            if codes.contains_key(&code) {
+                bail!("duplicate service code: {} {} {}", s.name, e.name, e.code);
+            }
+            codes.insert(code, e.code);
+        }
+    }
+    Ok(())
+}
+
 pub fn gen_model_rs(dir: &str) -> Result<()> {
     let db_filename = format!("{}/model.rs", dir);
     let mut f = File::create(&db_filename)?;
@@ -79,6 +94,7 @@ use strum_macros::EnumString;
             }
         }
     }
+    f.flush()?;
     drop(f);
     rustfmt(&db_filename)?;
 
@@ -239,6 +255,7 @@ pub fn gen_systemd_services(
     Ok(())
 }
 pub fn main() -> Result<()> {
+    check_endpoint_codes()?;
     let mut root = env::current_dir()?;
     loop {
         if root.join(".cargo").exists() {
