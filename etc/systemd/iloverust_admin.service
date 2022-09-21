@@ -1,0 +1,20 @@
+[Unit]
+Description=iloverust admin
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+User=ilr
+Type=simple
+Restart=always
+RestartSec=1
+WorkingDirectory=/home/ilr/iloverust
+ExecStart=/usr/bin/bash -c 'cargo run --bin admin --release --host=admin.iloverust --port=443 --config=etc/config.json'
+
+StandardError=append:/home/ilr/iloverust/log/iloverust_admin.log
+StandardOutput=append:/home/ilr/iloverust/log/iloverust_admin.log
+StandardInput=null
+
+[Install]
+WantedBy=default.target
+

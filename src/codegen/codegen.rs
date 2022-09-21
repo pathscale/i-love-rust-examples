@@ -276,12 +276,12 @@ pub fn main() -> Result<()> {
     gen_db_rs(&dir)?;
     gen_systemd_services(
         root,
-        "coldvaults",
-        "cv",
+        "iloverust",
+        "ilr",
         HashMap::from([
-            ("auth".to_owned(), "auth.defi.digital".to_owned()),
-            ("user".to_owned(), "cv.defi.digital".to_owned()),
-            ("admin".to_owned(), "admin.defi.digital".to_owned()),
+            ("auth".to_owned(), "auth.iloverust".to_owned()),
+            ("user".to_owned(), "user.iloverust".to_owned()),
+            ("admin".to_owned(), "admin.iloverust".to_owned()),
         ]),
     )?;
     Ok(())
