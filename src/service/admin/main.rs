@@ -2,8 +2,8 @@ mod method;
 
 use crate::endpoints::endpoint_admin_list_users;
 use crate::method::ListUsersHandler;
-use coldvaults::endpoints::endpoint_auth_authorize;
-use coldvaults::method::AuthorizeHandler;
+use iloverust::endpoints::endpoint_auth_authorize;
+use iloverust::method::AuthorizeHandler;
 use eyre::*;
 use gen::model::EnumService;
 use lib::config::load_config;
