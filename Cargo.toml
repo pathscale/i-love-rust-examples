@@ -31,6 +31,7 @@ gen = { path = "src/gen" }
 lib = { path = "src/lib" }
 sha2 = "*"
 virtual-table = { git = "https://github.com/nschoellhorn/virtual-table" }
+gluesql = "0.12"
 
 [dependencies.uuid]
 version = "1.1.2"
@@ -56,3 +57,7 @@ path = "src/service/user/main.rs"
 [[bin]]
 name = "admin"
 path = "src/service/admin/main.rs"
+
+[[bin]]
+name = "localdb"
+path = "src/localdb/main.rs"
