@@ -32,3 +32,8 @@ pub const TABLES: [&str; 1] = [
 		);
 	",
 ];
+
+pub const INDEXES: [&str; 2] = [
+	"CREATE INDEX IF NOT EXISTS uidx_user_username ON user (username);",
+	"CREATE INDEX IF NOT EXISTS uidx_user_public_id ON user (public_id);",
+];

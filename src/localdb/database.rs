@@ -17,6 +17,10 @@ impl Database {
 			let output = self.client.query(create_table_query);
 			println!("{:?}", output);
 		}
+		for create_index_query in constants::INDEXES {
+			let output = self.client.query(create_index_query);
+			println!("{:?}", output);
+		}
 	}
 }
 
