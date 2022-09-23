@@ -1,24 +1,19 @@
-use gluesql::prelude::{Glue, SledStorage};
-use gluesql::core::executor;
+use super::database;
 
 pub struct Client {
-	inner: Glue<SledStorage>,
+	db: database::Database
 }
 
 impl Client {
 	pub fn new(path: &str) -> Self {
-		let storage = SledStorage::new(path).unwrap();		
-		Self{inner: Glue::new(storage)}
-	}
-
-	pub fn query(&mut self, query: &str) -> Vec<executor::Payload> {
-		self.inner.execute(query).unwrap()
+		let mut new = Self{db: database::Database::new(path)};
+		new
 	}
 }
 
 impl Default for Client {
 	fn default() -> Self {
-		let storage = SledStorage::new("storage").unwrap();		
-		Self{inner: Glue::new(storage)}
+		let mut default = Self{db: database::Database::default()};
+		default
 	}
 }

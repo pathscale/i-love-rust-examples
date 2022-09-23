@@ -1,5 +1,4 @@
-use iloverust::localdb::database;
-
+use iloverust::localdb::client;
 fn main() {
-	let mut _database = database::Database::default();
+	let mut _database = client::Client::default();
 }
