@@ -1,5 +1,5 @@
 use gluesql::prelude::{Glue, SledStorage};
-use gluesql::core::{executor};
+use gluesql::core::{executor, result};
 
 use super::sql;
 
@@ -17,17 +17,24 @@ impl Database {
 
 	fn init(&mut self) {
 		for create_table_query in sql::create::TABLES {
-			let output = self.query(create_table_query);
-			println!("{:?}", output);
+			match self.query(create_table_query) {
+				Ok(output) => println!("{:?}", output),
+				Err(error) => println!("{:?}", error),
+			};
 		}
 		for create_index_query in sql::create::INDEXES {
-			let output = self.query(create_index_query);
-			println!("{:?}", output);
+			// BUG: gluesql will throw error when creating index in case it already exists
+			// even if "IF NOT EXISTS" is used
+			// TODO: update library when bug is fixed
+			match self.query(create_index_query) {
+				Ok(output) => println!("{:?}", output),
+				Err(error) => println!("{:?}", error),
+			};
 		}
 	}
 
-	pub fn query(&mut self, query: &str) -> Vec<executor::Payload> {
-		self.inner.execute(query).unwrap()
+	pub fn query(&mut self, query: &str) -> result::Result<Vec<executor::Payload>> {
+		self.inner.execute(query)
 	}
 }
 
