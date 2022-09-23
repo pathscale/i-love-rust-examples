@@ -1,4 +1,4 @@
-use gluesql::prelude::{Glue, SledStorage};
+use iloverust::localdb::client::Client;
 
 fn main() {
 	let users_table = 
@@ -35,8 +35,6 @@ fn main() {
 		);
 	";
 
-	let storage = SledStorage::new("storage").unwrap();
-	let mut glue = Glue::new(storage);
-	let output = glue.execute(users_table);
-	println!("{:?}", output);
+	let mut client = Client::default();
+	client.query(users_table);
 }
