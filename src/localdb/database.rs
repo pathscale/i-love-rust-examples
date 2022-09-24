@@ -1,5 +1,5 @@
 use gluesql::prelude::{Glue, SledStorage};
-use gluesql::core::{executor, result};
+use gluesql::core::{executor, result, parse_sql, sqlparser};
 
 use super::sql;
 
@@ -45,4 +45,38 @@ impl Default for Database {
 		db.init();
 		db
 	}
+}
+
+pub struct QueryChecker {}
+
+impl QueryChecker {
+	fn get_query_types(&self, query: &str) -> result::Result<Vec<sqlparser::ast::Statement>> {
+		parse_sql::parse(query)
+	}
+
+	pub fn is_read(&self, query: &str) -> result::Result<bool> {
+		let statements = self.get_query_types(query)?;
+		use sqlparser::ast::Statement;
+		for statement in statements {
+			match statement {
+				Statement::Comment{..} => ||{},
+				Statement::Query(..) => ||{},
+				Statement::Declare{..} => ||{},
+				Statement::ShowVariable{..} => ||{},
+				Statement::ShowColumns{..} => ||{},
+				Statement::ShowCreate{..} => ||{},
+				Statement::Analyze{..} => ||{},
+				Statement::ExplainTable{..} => ||{},
+				Statement::Explain{..} => ||{},
+				Statement::CreateView{..} => ||{},
+				Statement::Assert{..} => ||{},
+				_ => return Ok(false),
+			};
+		}
+		Ok(true)
+	}
+}
+
+impl Default for QueryChecker {
+	fn default() -> Self { Self{} }
 }
