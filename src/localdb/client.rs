@@ -114,7 +114,7 @@ fn unique_placeholders(query: &str) -> Result<(usize, Vec<String>), String> {
 }
 
 fn format_token(token: String) -> String {
-	let number = regex::bytes::Regex::new(r#"^[0-9]*\.?[0-9]*$"#).unwrap();
+	let number = regex::bytes::Regex::new(r#"^[0-9]+\.?[0-9]*$"#).unwrap();
 	if number.is_match(token.as_bytes()) {
 		// if string is numeric, use string
 		token
