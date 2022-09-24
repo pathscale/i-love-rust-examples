@@ -1,4 +1,5 @@
 use serde_json;
+use itertools::Itertools;
 
 use super::database;
 
@@ -66,9 +67,10 @@ impl Default for Client {
 }
 
 fn tokenize_query(query: &str, tokens: Vec<String>) -> Result<String,String> {
-	let token_chars = regex::bytes::Regex::new(r#"\?"#).unwrap();
-	if token_chars.find_iter(query.as_bytes()).count() != tokens.len() {
-		return Err("mismatched tokens and string vector length".to_owned());
+	let (num_placeholders, placeholders) = unique_placeholders(query)?;
+
+	if num_placeholders != tokens.len() {
+		return Err("mismatched placeholders and token vector length".to_owned());
 	};
 
 	if tokens.len() == 0 {
@@ -76,11 +78,35 @@ fn tokenize_query(query: &str, tokens: Vec<String>) -> Result<String,String> {
 	};
 	
 	let mut tokenized_query: String = query.to_owned();
-	for token in tokens {
-		tokenized_query = tokenized_query.replacen("?", format_token(token).as_str(), 1);
+	for (idx, token) in tokens.iter().enumerate() {
+		tokenized_query = tokenized_query.replace(
+			&placeholders[idx],
+			format_token(token.to_owned()).as_str());
 	};
 
 	Ok(tokenized_query)
+}
+
+fn unique_placeholders(query: &str) -> Result<(usize, Vec<String>), String> {
+	let token_placeholders = regex::bytes::Regex::new(r#"(?:\?[0-9]+)"#).unwrap();
+	let captured_matches = token_placeholders.captures_iter(query.as_bytes());
+
+	let mut matches: Vec<&[u8]> = Vec::new();
+	let mut placeholders: Vec<String> = Vec::new();
+	for capture in captured_matches {
+		let match_bytes =	match capture.get(0) {
+				None => return Err("fodeu".to_owned()),
+				Some(c) => c.as_bytes(),
+		};
+		matches.push(match_bytes);
+		let placeholder = match std::str::from_utf8(match_bytes) {
+			Err(error) => return Err(error.to_string()),
+			Ok(p) => p,
+		};
+		placeholders.push(placeholder.to_owned());
+	}
+
+	Ok((matches.iter().unique().count(), placeholders))
 }
 
 fn format_token(token: String) -> String {
