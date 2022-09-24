@@ -2,26 +2,45 @@ use iloverust::localdb::client;
 fn main() {
 	let mut client = client::Client::default();
 
-	let write_queries = [
-		"CREATE TABLE IF NOT EXISTS test (id INTEGER, content TEXT NULL);",
-		"INSERT INTO test (id) VALUES (0);",
-		"INSERT INTO test (id) VALUES (1);",
-		"INSERT INTO test (id) VALUES (2);",
-		"INSERT INTO test VALUES (3, 'yes thats right');",
-		"UPDATE test SET content = 'new content' WHERE id = 0;",
-	];
+	println!("{:?}", client.write(
+			"CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY, content TEXT NULL);",
+			Vec::new(),
+		)
+	);
 
-	let read_queries = [
-		"SELECT * FROM test;"
-	];
+	println!("{:?}", client.write(
+			"INSERT INTO test (id) VALUES (?);",
+			vec!["0".to_owned()],
+		)
+	);
 
-	for sql in write_queries {
-		let result = client.write(sql);
-		println!("{:?}", result);
-	}
+	println!("{:?}", client.write(
+			"INSERT INTO test (id) VALUES (?);",
+			vec!["1".to_owned()],
+		)
+	);
 
-	for sql in read_queries {
-		let result = client.read(sql);
-		println!("{:?}", result);
-	}
+	println!("{:?}", client.write(
+			"INSERT INTO test (id) VALUES (?);",
+			vec!["2".to_owned()],
+		)
+	);
+
+	println!("{:?}", client.write(
+			"INSERT INTO test VALUES (?, ?);",
+			vec!["3".to_owned(), "yes, that's right".to_owned()],
+		)
+	);
+
+	println!("{:?}", client.write(
+			"UPDATE test SET content = ? WHERE id = ?;",
+			vec!["new content".to_owned(), "0".to_owned()],
+		)
+	);
+
+	println!("{:?}", client.read(
+			"SELECT * FROM test;",
+			Vec::new(),
+		)
+	);
 }
