@@ -77,13 +77,17 @@ fn tokenize_query(query: &str, tokens: Vec<String>) -> Result<String,String> {
 		return Ok(query.to_owned());
 	};
 	
-	let mut tokenized_query: String = query.to_owned();
-	for (idx, token) in tokens.iter().enumerate() {
-		tokenized_query = tokenized_query.replace(
-			&placeholders[idx],
-			format_token(token.to_owned()).as_str());
-	};
+	let mut placeholders_and_tokens = placeholders.into_iter().zip(tokens).collect::<Vec<_>>();
+	placeholders_and_tokens.sort_by(|a, b|(b.0).clone().pop().cmp(&(a.0).clone().pop()));
 
+	let mut tokenized_query: String = query.to_owned();
+	for (placeholder, token) in placeholders_and_tokens {
+		tokenized_query = tokenized_query.replace(
+			&placeholder,
+			format_token(token.to_owned()).as_str()
+		);
+	};
+	
 	Ok(tokenized_query)
 }
 
@@ -95,7 +99,7 @@ fn unique_placeholders(query: &str) -> Result<(usize, Vec<String>), String> {
 	let mut placeholders: Vec<String> = Vec::new();
 	for capture in captured_matches {
 		let match_bytes =	match capture.get(0) {
-				None => return Err("fodeu".to_owned()),
+				None => return Err("could not recover captured placeholders".to_owned()),
 				Some(c) => c.as_bytes(),
 		};
 		matches.push(match_bytes);
@@ -106,12 +110,12 @@ fn unique_placeholders(query: &str) -> Result<(usize, Vec<String>), String> {
 		placeholders.push(placeholder.to_owned());
 	}
 
-	Ok((matches.iter().unique().count(), placeholders))
+	Ok((matches.iter().unique().count(), placeholders.into_iter().unique().collect()))
 }
 
 fn format_token(token: String) -> String {
-	let numeric = regex::bytes::Regex::new(r#"^[0-9]*$"#).unwrap();
-	if numeric.is_match(token.as_bytes()) {
+	let number = regex::bytes::Regex::new(r#"^[0-9]*\.?[0-9]*$"#).unwrap();
+	if number.is_match(token.as_bytes()) {
 		// if string is numeric, use string
 		token
 	} else {
