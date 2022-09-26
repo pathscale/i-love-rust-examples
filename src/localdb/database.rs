@@ -59,17 +59,22 @@ impl QueryChecker {
 		use sqlparser::ast::Statement;
 		for statement in statements {
 			match statement {
+				// read/write agnostic statements
 				Statement::Comment{..} => ||{},
-				Statement::Query(..) => ||{},
 				Statement::Declare{..} => ||{},
-				Statement::ShowVariable{..} => ||{},
-				Statement::ShowColumns{..} => ||{},
-				Statement::ShowCreate{..} => ||{},
-				Statement::Analyze{..} => ||{},
-				Statement::ExplainTable{..} => ||{},
-				Statement::Explain{..} => ||{},
-				Statement::CreateView{..} => ||{},
+				Statement::SetVariable{..} => ||{},
+				Statement::Prepare{..} => ||{},
+				Statement::Execute{..} => ||{},
+				Statement::Deallocate{..} => ||{},
+				Statement::Kill{..} => ||{},
 				Statement::Assert{..} => ||{},
+				Statement::Fetch{..} => ||{},
+				Statement::Close{..} => ||{},
+				Statement::Discard{..} => ||{},
+				// read-only statements
+				Statement::Query(..) => ||{},
+				Statement::ShowVariable{..} => ||{},
+				Statement::Explain{..} => ||{},
 				_ => return Ok(false),
 			};
 		}
