@@ -1,36 +1,20 @@
 use itertools::Itertools;
 
 pub fn tokenize_statements(statements: &str, tokens: Vec<String>) -> Result<String,String> {
-	let (num_placeholders, placeholders) = unique_placeholders(statements)?;
+	let (num_placeholders,mut placeholders) = unique_placeholders(statements)?;
+	order_placeholders(&mut placeholders);
+	validate_tokenization(num_placeholders, tokens.len(), &placeholders)?;
 
-	if num_placeholders != tokens.len() {
-		return Err("mismatched number of unique placeholders and tokens".to_owned());
-	};
-
-	if tokens.len() == 0 {
-		return Ok(statements.to_owned());
-	};
+	if tokens.len() == 0 { return Ok(statements.to_owned()) };
 	
-	let mut placeholder_to_token = placeholders
-		.into_iter()
-		.zip(tokens)
-		.collect::<Vec<_>>();
-
-	placeholder_to_token
-		.sort_by(
-			|a, b|(
-				b.0).clone().pop().cmp(&(a.0).clone().pop()
-			)
-	);
-
 	let mut tokenized_statements: String = statements.to_owned();
-	for (placeholder, token) in placeholder_to_token {
+	for (idx, placeholder) in placeholders.iter().enumerate().rev() {
 		tokenized_statements = tokenized_statements.replace(
-			&placeholder,
-			format_token(token.to_owned()).as_str(),
+			placeholder,
+			&format_token(tokens[idx].to_owned()),
 		);
 	};
-	
+
 	Ok(tokenized_statements)
 }
 
@@ -54,6 +38,24 @@ fn unique_placeholders(statements: &str) -> Result<(usize, Vec<String>), String>
 	}
 
 	Ok((matches.iter().unique().count(), placeholders.into_iter().unique().collect()))
+}
+
+fn order_placeholders(placeholders: &mut Vec<String>) {
+	placeholders.sort_by(|a,b| a.clone().pop().cmp(&b.clone().pop()));
+}
+
+fn validate_tokenization(num_placeholders: usize, num_tokens: usize, placeholders: &Vec<String>) -> Result<(),String> {
+	if num_placeholders != num_tokens {
+		return Err("mismatched number of unique placeholders and tokens".to_owned());
+	};
+
+	for (idx, placeholder) in placeholders.iter().enumerate() {
+		if placeholder != &format!("?{}",&idx.to_string()) {
+			return Err("mismatched placeholder numbers and token vector indexes".to_owned());
+		}
+	}
+
+	Ok(())
 }
 
 fn format_token(token: String) -> String {
