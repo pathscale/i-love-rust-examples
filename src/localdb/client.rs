@@ -8,50 +8,32 @@ pub struct Client {
 }
 
 impl Client {
-	pub fn new(storage_path: &str) -> Self {
-		Self{
-			db: database::Database::new(storage_path),
-		}
+	pub fn new(storage_path: &str) -> Result<Self,ClientError> {
+		Ok(Self{ db: database::Database::new(storage_path)? })
 	}
 
-	pub fn write(&mut self, statements: &str, tokens: Vec<String>) -> Result<(),String> {
+	pub fn write(&mut self, statements: &str, tokens: Vec<String>) -> Result<(),ClientError> {
 		let tokenized_statements = tokenizer::tokenize_statements(statements, tokens)?;
-		let valid_statements = analyzer::are_read_only(&tokenized_statements);
-		let read_only = match valid_statements {
-			Ok(is_read_only) => is_read_only,
-			Err(error) => return Err(error.to_string()),
-		};
+		let read_only = analyzer::are_read_only(&tokenized_statements)?;
+
 		if read_only {
-			return Err("can't call write solely with read-only statements".to_owned())
+			return Err(ClientError::from("can't call write solely with read-only statements"));
 		};
 
-		match self.db.exec(&tokenized_statements) {
-			Ok(_) => Ok(()),
-			Err(error) => return Err(error.to_string()),
-		}
+		self.db.exec(&tokenized_statements)?;
+		Ok(())
 	}
 
 
-	pub fn read(&mut self, statements: &str, tokens: Vec<String>) -> Result<String,String> {
+	pub fn read(&mut self, statements: &str, tokens: Vec<String>) -> Result<String,ClientError> {
 		let tokenized_statements = tokenizer::tokenize_statements(statements, tokens)?;
-		let valid_statements = analyzer::are_read_only(&tokenized_statements);
-		let read_only = match valid_statements {
-			Ok(is_read_only) => is_read_only,
-			Err(error) => return Err(error.to_string()),
-		};
+		let read_only = analyzer::are_read_only(&tokenized_statements)?;
+
 		if !read_only {
-			return Err("can't call read with non read-only statements".to_owned())
+			return Err(ClientError::from("can't call read with non read-only statements"));
 		};
 
-		let serialized = match self.db.exec(&tokenized_statements) {
-			Ok(result) => serde_json::to_string(&result),
-			Err(error) => return Err(error.to_string()),
-		};
-
-		match serialized {
-			Ok(json) => Ok(json),
-			Err(error) => Err(error.to_string()),
-		}
+		Ok(serde_json::to_string(&self.db.exec(&tokenized_statements)?)?)
 	}
 }
 
@@ -60,5 +42,44 @@ impl Default for Client {
 		Self{
 			db: database::Database::default(),
 		}
+	}
+}
+
+#[derive(Debug)]
+pub enum ClientError {
+	SerializationError(serde_json::Error),
+	DbError(database::DatabaseError),
+	ValidationError(analyzer::AnalyzerError),
+	TokenizationError(tokenizer::TokenizerError),
+	Message(&'static str),
+}
+
+impl From<serde_json::Error> for ClientError {
+	fn from(e: serde_json::Error) -> Self {
+		Self::SerializationError(e)
+	}
+}
+
+impl From<database::DatabaseError> for ClientError {
+	fn from(e: database::DatabaseError) -> Self {
+		Self::DbError(e)
+	}
+}
+
+impl From<analyzer::AnalyzerError> for ClientError {
+	fn from(e: analyzer::AnalyzerError) -> Self {
+		Self::ValidationError(e)
+	}
+}
+
+impl From<tokenizer::TokenizerError> for ClientError {
+	fn from(e: tokenizer::TokenizerError) -> Self {
+		Self::TokenizationError(e)
+	}
+}
+
+impl From<&'static str> for ClientError {
+	fn from(e: &'static str) -> Self {
+		Self::Message(e)
 	}
 }

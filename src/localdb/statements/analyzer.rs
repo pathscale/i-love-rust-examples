@@ -1,8 +1,8 @@
 use gluesql::core::{result, sqlparser, parse_sql};
 use sqlparser::ast::Statement;
 
-pub fn are_read_only(statements: &str) -> result::Result<bool> {
-	let statements_vector = get_statement_types(statements)?;
+pub fn are_read_only(statements: &str) -> Result<bool,AnalyzerError> {
+	let statements_vector = parse_sql::parse(statements)?;
 	for statement in statements_vector {
 		match statement {
 			// read/write agnostic statements
@@ -27,7 +27,13 @@ pub fn are_read_only(statements: &str) -> result::Result<bool> {
 	Ok(true)
 }
 
+#[derive(Debug)]
+pub enum AnalyzerError {
+	StatementParseError(result::Error),
+}
 
-fn get_statement_types(statements: &str) -> result::Result<Vec<sqlparser::ast::Statement>> {
-	parse_sql::parse(statements)
+impl From<result::Error> for AnalyzerError {
+	fn from(e: result::Error) -> Self {
+		Self::StatementParseError(e)
+	}
 }
