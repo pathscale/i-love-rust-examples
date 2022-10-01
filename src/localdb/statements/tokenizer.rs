@@ -2,11 +2,11 @@ use itertools::Itertools;
 
 pub fn tokenize_statements(statements: &str, tokens: Vec<String>) -> Result<String,TokenizerError> {
 	let (num_placeholders,mut placeholders) = unique_placeholders(statements)?;
-	order_placeholders(&mut placeholders);
-	validate_matching_length(num_placeholders, tokens.len())?;
-	validate_placeholders(&placeholders)?;
 
+	order_placeholders(&mut placeholders)?;
+	validate_matching_length(num_placeholders, tokens.len())?;
 	if tokens.len() == 0 { return Ok(statements.to_owned()) };
+	validate_placeholders(&placeholders)?;
 	
 	let mut tokenized_statements: String = statements.to_owned();
 	for (idx, placeholder) in placeholders.iter().enumerate().rev() {
@@ -38,8 +38,27 @@ fn unique_placeholders(statements: &str) -> Result<(usize, Vec<String>), Tokeniz
 	Ok((matches.iter().unique().count(), placeholders.into_iter().unique().collect()))
 }
 
-fn order_placeholders(placeholders: &mut Vec<String>) {
-	placeholders.sort_by(|a,b| a.clone().pop().cmp(&b.clone().pop()));
+fn order_placeholders(placeholders: &mut Vec<String>) -> Result<(),TokenizerError> {
+	let mut failed: Option<std::num::ParseIntError> = None;
+	placeholders
+		.sort_by(|a,b| {
+				let mut a_clone = a.clone();
+				let mut b_clone = b.clone();
+				a_clone.remove(0);
+				b_clone.remove(0);
+				let a_int = a_clone.parse::<u32>()
+					.map_err(|e| failed = Some(e))
+					.unwrap_or_default();
+				let b_int = b_clone.parse::<u32>()
+					.map_err(|e| failed = Some(e))
+					.unwrap_or_default();
+				a_int.cmp(&b_int)
+			}
+		);
+	match failed {
+		Some(e) => Err(e.into()),
+		None => Ok(())
+	}
 }
 
 fn validate_matching_length(num_placeholders: usize, num_tokens: usize) -> Result<(),TokenizerError> {
@@ -75,8 +94,22 @@ fn format_token(token: String) -> Result<String,TokenizerError> {
 pub enum TokenizerError {
 	RegexError(regex::Error),
 	ConversionError(std::str::Utf8Error),
+	PlaceholderError(std::num::ParseIntError),
 	Message(&'static str),
 }
+
+impl std::fmt::Display for TokenizerError {
+	fn fmt (&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::RegexError(e) => write!(f, "{:?}", e),
+			Self::ConversionError(e) => write!(f, "{:?}", e),
+			Self::PlaceholderError(e) => write!(f, "{:?}", e),
+			Self::Message(error_msg) => write!(f, "{:?}", error_msg),
+		}
+	}
+}
+
+impl std::error::Error for TokenizerError {}
 
 impl From<regex::Error> for TokenizerError {
 	fn from(e: regex::Error) -> Self {
@@ -87,6 +120,12 @@ impl From<regex::Error> for TokenizerError {
 impl From<std::str::Utf8Error> for TokenizerError {
 	fn from(e: std::str::Utf8Error) -> Self {
 		Self::ConversionError(e)
+	}
+}
+
+impl From<std::num::ParseIntError> for TokenizerError {
+	fn from(e: std::num::ParseIntError) -> Self {
+		Self::PlaceholderError(e)
 	}
 }
 
