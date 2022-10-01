@@ -5,7 +5,7 @@ pub const TABLES: [&str; 8] = [
 			pkey_id INTEGER PRIMARY KEY, 
 			role TEXT NOT NULL DEFAULT 'user',
 			public_id INTEGER NOT NULL,
-			username TEXT NOT NULL,
+			username TEXT UNIQUE NOT NULL,
 			password_hash BYTEA NOT NULL,
 			password_salt BYTEA NOT NULL,
 			age INTEGER NOT NULL,
