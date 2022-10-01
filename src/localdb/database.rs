@@ -1,11 +1,15 @@
 use gluesql::prelude::{Glue, SledStorage};
-use gluesql::core::{executor, result};
+use gluesql::core::{result};
 
 use super::sql;
 
 pub struct Database {
 	inner: Glue<SledStorage>,
 }
+
+pub type Payload = gluesql::core::executor::Payload;
+pub type Label = Vec<String>;
+pub type Row = Vec<gluesql::core::data::Value>;
 
 impl Database {
 	pub fn new(storage_path: &str) -> Result<Self,DatabaseError> {
@@ -32,7 +36,7 @@ impl Database {
 		Ok(())
 	}
 
-	pub fn exec(&mut self, statements: &str) -> Result<Vec<executor::Payload>,DatabaseError> {
+	pub fn exec(&mut self, statements: &str) -> Result<Vec<Payload>,DatabaseError> {
 		Ok(self.inner.execute(statements)?)
 	}
 }
@@ -53,6 +57,17 @@ pub enum DatabaseError {
 	ExecError(result::Error),
 	Message(&'static str),
 }
+
+impl std::fmt::Display for DatabaseError {
+	fn fmt (&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::ExecError(e) => write!(f, "{:?}", e),
+			Self::Message(error_msg) => write!(f, "{:?}", error_msg),
+		}
+	}
+}
+
+impl std::error::Error for DatabaseError {}
 
 impl From<result::Error> for DatabaseError {
 	fn from(e: result::Error) -> Self {
