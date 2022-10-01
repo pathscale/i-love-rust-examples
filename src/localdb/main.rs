@@ -1,9 +1,9 @@
 
 use eyre::Result;
 
-use iloverust::localdb::database::Database;
-use iloverust::localdb::statements::tokenizer;
 
+use iloverust::localdb::db::database::Database;
+use iloverust::localdb::db::statements::tokenizer;
 async fn main() -> Result<()> {
 	let mut db = Database::default();
 

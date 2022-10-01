@@ -1,3 +1,1 @@
-mod sql;
-pub mod database;
-pub mod statements;
+pub mod db;
