@@ -1,4 +1,3 @@
 mod sql;
-mod database;
-mod statements;
-pub mod client;
+pub mod database;
+pub mod statements;
