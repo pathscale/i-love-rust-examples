@@ -1,5 +1,5 @@
 pub const TABLES: [&str; 8] = [
-	"
+    "
 		CREATE TABLE IF NOT EXISTS user
 		(
 			pkey_id INTEGER PRIMARY KEY, 
@@ -31,7 +31,7 @@ pub const TABLES: [&str; 8] = [
 			is_blocked BOOLEAN NOT NULL DEFAULT false,
 		);
 	",
-	"
+    "
 		CREATE TABLE IF NOT EXISTS login_attempt
 		(
 			pkey_id INTEGER PRIMARY KEY,
@@ -45,7 +45,7 @@ pub const TABLES: [&str; 8] = [
 			moment INTEGER NOT NULL, -- unix timestamp
 		);
 	",
-	"
+    "
 		CREATE TABLE IF NOT EXISTS authorization_attempt
 		(
 			pkey_id INTEGER PRIMARY KEY,
@@ -55,7 +55,7 @@ pub const TABLES: [&str; 8] = [
 			moment INTEGER NOT NULL, -- unix timestamp
 		);
 	",
-	"
+    "
 		CREATE TABLE IF NOT EXISTS reset_password_attempt
 		(
 			pkey_id INTEGER PRIMARY KEY,
@@ -65,7 +65,7 @@ pub const TABLES: [&str; 8] = [
 			code TEXT NOT NULL,
 		);
 	",
-	"
+    "
 		CREATE TABLE IF NOT EXISTS recovery_question
 		(
 			pkey_id INTEGER PRIMARY KEY,
@@ -74,7 +74,7 @@ pub const TABLES: [&str; 8] = [
 			answer TEXT NOT NULL,
 		);
 	",
-	"
+    "
 		CREATE TABLE IF NOT EXISTS recovery_question_data
 		(
 			pkey_id INTEGER PRIMARY KEY,
@@ -82,7 +82,7 @@ pub const TABLES: [&str; 8] = [
 			category TEXT NOT NULL,
 		);
 	",
-	"
+    "
 		CREATE TABLE IF NOT EXISTS support_ticket
 		(
 			pkey_id INTEGER PRIMARY KEY,
@@ -94,7 +94,7 @@ pub const TABLES: [&str; 8] = [
 			updated_at INTEGER NOT NULL, -- unix timestamp
 		);
 	",
-	"
+    "
 		CREATE TABLE IF NOT EXISTS bad_request
 		(
 			pkey_id INTEGER PRIMARY KEY,
@@ -111,6 +111,6 @@ pub const TABLES: [&str; 8] = [
 ];
 
 pub const INDEXES: [&str; 2] = [
-	"CREATE INDEX IF NOT EXISTS uidx_user_username ON user (username);",
-	"CREATE INDEX IF NOT EXISTS uidx_user_public_id ON user (public_id);",
+    "CREATE INDEX IF NOT EXISTS uidx_user_username ON user (username);",
+    "CREATE INDEX IF NOT EXISTS uidx_user_public_id ON user (public_id);",
 ];
