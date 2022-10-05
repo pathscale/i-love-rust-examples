@@ -1,0 +1,25 @@
+[package]
+name = "localdb"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lib = { path = "../lib" }
+model = { path = "../model" }
+eyre = "*"
+serde = { version = "*", features = ["derive"] }
+futures = "*"
+itertools = "0.10.3"
+regex = "1.5.6"
+reqwest = { version = "*", default-features = false, features = [
+	"rustls-tls",
+	"serde_json",
+	"json",
+] }
+gluesql = "0.12"
+
+[lib]
+name = "localdb"
+path = "mod.rs"

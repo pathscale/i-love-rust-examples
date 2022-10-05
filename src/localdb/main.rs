@@ -7,10 +7,10 @@ use lib::config::load_config;
 use lib::log::setup_logs;
 use lib::ws::WebsocketServer;
 
-use iloverust::localdb::db::database::Database;
-use iloverust::localdb::db::statements::tokenizer;
-use iloverust::localdb::endpoints::endpoint_localdb_select;
-use iloverust::localdb::method::QueryHandler;
+use localdb::db::database::Database;
+use localdb::db::statements::tokenizer;
+use localdb::endpoints::endpoint_localdb_select;
+use localdb::method::QueryHandler;
 
 #[tokio::main]
 async fn main() -> Result<()> {
