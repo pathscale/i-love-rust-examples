@@ -20,7 +20,11 @@ rayon = "*"
 tokio = { version = "*", features = ["full"] }
 crossbeam = "*"
 nonzero_ext = "*"
-reqwest = { version = "*", default-features = false, features = ["rustls-tls", "serde_json", "json"] }
+reqwest = { version = "*", default-features = false, features = [
+	"rustls-tls",
+	"serde_json",
+	"json",
+] }
 governor = "*"
 tokio-tungstenite = { version = "*", features = [] }
 itertools = "*"
@@ -36,7 +40,7 @@ static_assertions = "*"
 tokio-postgres = "*"
 uuid = "*"
 virtual-table = { git = "https://github.com/nschoellhorn/virtual-table" }
-deadpool-postgres = { version = "*", features = ["serde"] }
+deadpool = { version = "*", features = ["serde"] }
 model = { path = "../model" }
 rustls = "0.20.6"
 rustls-pemfile = "0.3.0"
@@ -44,6 +48,7 @@ tokio-rustls = "0.23.4"
 convert_case = "0.5.0"
 pem = "*"
 urlencoding = "*"
+gluesql = "0.12"
 [lib]
 name = "lib"
 path = "mod.rs"

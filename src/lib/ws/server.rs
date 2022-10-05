@@ -1,4 +1,4 @@
-use crate::database::SimpleDbClient;
+use crate::database::LocalDbClient;
 use dashmap::DashMap;
 use eyre::*;
 use futures::stream::{SplitSink, SplitStream};
@@ -90,7 +90,7 @@ impl WebsocketServer {
     pub fn add_auth_controller(&mut self, controller: Arc<dyn AuthController>) {
         self.auth_controller = controller;
     }
-    pub fn add_database(&mut self, db: SimpleDbClient) {
+    pub fn add_database(&mut self, db: LocalDbClient) {
         self.toolbox.set_db(db);
     }
     pub fn get_toolbox(&self) -> Toolbox {

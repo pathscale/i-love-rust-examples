@@ -1,4 +1,4 @@
-use crate::database::SimpleDbClient;
+use crate::database::LocalDbClient;
 use crate::error_code::ErrorCode;
 use crate::log::LogLevel;
 use crate::ws::*;
@@ -64,7 +64,7 @@ pub struct RequestContext {
 }
 #[derive(Clone)]
 pub struct Toolbox {
-    db: Option<SimpleDbClient>,
+    db: Option<LocalDbClient>,
     values: Arc<DashMap<String, Arc<dyn Any + Send + Sync>>>,
     sender: mpsc::Sender<WsMessage>,
     tasks: Option<Arc<Mutex<Vec<tokio::task::JoinHandle<()>>>>>,
@@ -79,10 +79,10 @@ impl Toolbox {
             tasks: None,
         }
     }
-    pub fn set_db(&mut self, db: SimpleDbClient) {
+    pub fn set_db(&mut self, db: LocalDbClient) {
         self.db = Some(db);
     }
-    pub fn get_db<T: From<SimpleDbClient>>(&self) -> T {
+    pub fn get_db<T: From<LocalDbClient>>(&self) -> T {
         T::from(self.db.as_ref().expect("Db not Initialized").clone())
     }
     pub fn set_value(&mut self, key: &str, value: Arc<dyn Any + Send + Sync>) {
