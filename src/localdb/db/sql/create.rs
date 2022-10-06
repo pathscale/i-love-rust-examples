@@ -22,8 +22,8 @@ pub const TABLES: [&str; 8] = [
 			last_login INTEGER NULL, -- unix timestamp
 			last_password_reset INTEGER NULL, -- unix timestamp
 			logins_count INTEGER NOT NULL DEFAULT 0,
-			user_device_id TEXT NOT NULL,
-			admin_device_id TEXT NOT NULL,
+			user_device_id TEXT NULL,
+			admin_device_id TEXT NULL,
 			password_reset_token UUID NULL,
 			reset_token_valid UUID NULL,
 			user_token UUID NULL,
