@@ -72,12 +72,25 @@ pub fn load_config(service_name: String) -> Result<Config> {
     let config = std::fs::read_to_string(&args.config)?;
     let root: serde_json::Value = serde_json::from_str(&config)?;
 
-    let db: DbConfig = serde_json::from_value(root.get("db").unwrap().to_owned())?;
+    let db: DbConfig = serde_json::from_value(
+        root.get("db")
+            .ok_or(ConfigError::DefaultDbConfigNotFoundError(format!(
+                "'db' field not found in config file {}",
+                args.config.display()
+            )))?
+            .to_owned(),
+    )?;
     let app_file: AppFileConfig = serde_json::from_value(
         root.get("app")
-            .unwrap()
+            .ok_or(ConfigError::DefaultAppConfigNotFoundError(format!(
+                "'app' field not found in config file {}",
+                args.config.display()
+            )))?
             .get(&service_name)
-            .unwrap()
+            .ok_or(ConfigError::DefaultAppConfigNotFoundError(format!(
+                "'{}' service field not found in 'app'",
+                service_name
+            )))?
             .to_owned(),
     )?;
 
@@ -92,3 +105,20 @@ pub fn load_config(service_name: String) -> Result<Config> {
 
     Ok(Config { db: db, app: app })
 }
+
+#[derive(Debug)]
+pub enum ConfigError {
+    DefaultDbConfigNotFoundError(String),
+    DefaultAppConfigNotFoundError(String),
+}
+
+impl std::fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::DefaultDbConfigNotFoundError(e) => write!(f, "{:?}", e),
+            Self::DefaultAppConfigNotFoundError(e) => write!(f, "{:?}", e),
+        }
+    }
+}
+
+impl std::error::Error for ConfigError {}
