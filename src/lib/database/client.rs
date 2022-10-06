@@ -104,7 +104,7 @@ pub enum LocalDbClientError {
     ConversionError(super::stringable::StringifyError),
     PoolError(deadpool::managed::PoolError<DbConnectionError>),
     BuildError(deadpool::managed::BuildError<ErrReport>),
-    ConnectionError(DbConnectionError),
+    DbConnectionError(DbConnectionError),
     Message(&'static str),
 }
 
@@ -115,7 +115,7 @@ impl std::fmt::Display for LocalDbClientError {
             Self::ConversionError(e) => write!(f, "{:?}", e),
             Self::PoolError(e) => write!(f, "{:?}", e),
             Self::BuildError(e) => write!(f, "{:?}", e),
-            Self::ConnectionError(e) => write!(f, "{:?}", e),
+            Self::DbConnectionError(e) => write!(f, "{:?}", e),
             Self::Message(error_msg) => write!(f, "{:?}", error_msg),
         }
     }
@@ -143,7 +143,7 @@ impl From<deadpool::managed::PoolError<DbConnectionError>> for LocalDbClientErro
 
 impl From<DbConnectionError> for LocalDbClientError {
     fn from(e: DbConnectionError) -> Self {
-        Self::ConnectionError(e)
+        Self::DbConnectionError(e)
     }
 }
 
