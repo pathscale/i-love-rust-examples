@@ -9,7 +9,7 @@ pub const TABLES: [&str; 8] = [
 			password_hash BYTEA NOT NULL,
 			password_salt BYTEA NOT NULL,
 			age INTEGER NOT NULL,
-			oreferred_language TEXT NOT NULL,
+			preferred_language TEXT NOT NULL,
 			family_name TEXT NULL,
 			given_name TEXT NULL,
 			agreed_tos BOOLEAN NOT NULL,
