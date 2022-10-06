@@ -82,31 +82,11 @@ pub fn load_config(service_name: String) -> Result<Config> {
     )?;
 
     let mut app: AppConfig = AppConfig::default();
-    app.log_level = if args.log_level.is_some() {
-        args.log_level.unwrap()
-    } else {
-        app_file.log_level
-    };
-    app.port = if args.port.is_some() {
-        args.port.unwrap()
-    } else {
-        app_file.port
-    };
-    app.host = if args.host.is_some() {
-        args.host.unwrap()
-    } else {
-        app_file.host
-    };
-    app.pub_cert = if args.pub_cert.is_some() {
-        args.pub_cert.unwrap()
-    } else {
-        app_file.pub_cert
-    };
-    app.priv_cert = if args.priv_cert.is_some() {
-        args.priv_cert.unwrap()
-    } else {
-        app_file.priv_cert
-    };
+    app.log_level = args.log_level.unwrap_or(app_file.log_level);
+    app.port = args.port.unwrap_or(app_file.port);
+    app.host = args.host.unwrap_or(app_file.host);
+    app.pub_cert = args.pub_cert.unwrap_or(app_file.pub_cert);
+    app.priv_cert = args.priv_cert.unwrap_or(app_file.priv_cert);
     app.name = service_name;
     println!("App config {:#?}", app);
 
