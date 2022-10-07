@@ -35,13 +35,13 @@ pub const TABLES: [&str; 8] = [
 		CREATE TABLE IF NOT EXISTS login_attempt
 		(
 			pkey_id INTEGER PRIMARY KEY,
-			fkey_user INTEGER NOT NULL, -- fkey to user table
+			fkey_user INTEGER NULL, -- fkey to user table
 			username TEXT NOT NULL,
 			password_hash BYTEA NOT NULL,
 			ip_address TEXT NOT NULL,
-			device_id TEXT NOT NULL,
-			device_os TEXT NOT NULL,
-			is_password_ok BOOLEAN NOT NULL,
+			device_id TEXT NULL,
+			device_os TEXT NULL,
+			is_password_ok BOOLEAN NULL,
 			moment INTEGER NOT NULL, -- unix timestamp
 		);
 	",
