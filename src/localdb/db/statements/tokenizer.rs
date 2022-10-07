@@ -94,12 +94,22 @@ fn validate_placeholders(placeholders: &Vec<String>) -> Result<(), TokenizerErro
 }
 
 fn format_token(token: String) -> Result<String, TokenizerError> {
+    let forced_string = regex::bytes::Regex::new(r#"^--force-string"#)?;
     let number = regex::bytes::Regex::new(r#"^[0-9]+\.?[0-9]*$"#)?;
     let boolean = regex::bytes::Regex::new(r#"^true|false$"#)?;
-    if number.is_match(token.as_bytes()) {
+    let token_bytes = token.as_bytes();
+    if forced_string.is_match(token_bytes) {
+        // if it has a forced flag, add quotes to whatever it is
+        Ok(format!(
+            "{}{}{}",
+            "\"",
+            token.replace("--force-string", ""),
+            "\""
+        ))
+    } else if number.is_match(token_bytes) {
         // if string is numeric, use raw
         Ok(token)
-    } else if boolean.is_match(token.as_bytes()) {
+    } else if boolean.is_match(token_bytes) {
         // if string is a boolean, use raw
         Ok(token)
     } else {
