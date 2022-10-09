@@ -3,7 +3,7 @@ pub const TABLES: [&str; 8] = [
 		CREATE TABLE IF NOT EXISTS user
 		(
 			pkey_id INTEGER PRIMARY KEY, 
-			role TEXT NOT NULL DEFAULT 'user',
+			user_role TEXT NOT NULL DEFAULT 'user',
 			public_id INTEGER NOT NULL,
 			username TEXT UNIQUE NOT NULL,
 			password_hash BYTEA NOT NULL,
@@ -25,7 +25,7 @@ pub const TABLES: [&str; 8] = [
 			user_device_id TEXT NULL,
 			admin_device_id TEXT NULL,
 			password_reset_token TEXT NULL,
-			reset_token_valid TEXT NULL,
+			reset_token_valid INTEGER NULL,
 			user_token TEXT NULL,
 			admin_token TEXT NULL,
 			is_blocked BOOLEAN NOT NULL DEFAULT false,
