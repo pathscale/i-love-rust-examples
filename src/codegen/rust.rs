@@ -48,19 +48,51 @@ impl ToRust for Type {
                 name,
                 variants: fields,
             } => {
+                let impl_try_from_i32 = [
+                    format!(
+                        r#"
+														impl std::convert::TryFrom<i32> for Enum{} {{
+															type Error = ();
+
+															fn try_from(v: i32) -> Result<Self, Self::Error> {{
+																match v {{
+															"#,
+                        name.to_case(Case::Pascal)
+                    ),
+                    fields
+                        .iter()
+                        .map(|x| {
+                            format!(
+                                r#"{} => Ok(Enum{}::{}),"#,
+                                x.value,
+                                name.to_case(Case::Pascal),
+                                x.name.to_case(Case::Pascal)
+                            )
+                        })
+                        .collect::<String>(),
+                    r#"
+																	_ => Err(()),
+																}
+															}
+														}
+												"#
+                    .to_string(),
+                ]
+                .join("");
                 let mut fields = fields.iter().map(|x| {
                     format!(
-                        r#"#[postgres(name = "{}")]{} = {}"#,
+                        r#"#[strum(to_string = "{}")]{} = {}"#,
                         x.name,
                         x.name.to_case(Case::Pascal),
                         x.value
                     )
                 });
                 format!(
-                    r#"#[derive(Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize, FromPrimitive, PartialEq, EnumString)] #[postgres(name = "enum_{}")]pub enum Enum{} {{{}}}"#,
+                    r#"#[derive(Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize, FromPrimitive, PartialEq, EnumString, Display)] #[postgres(name = "enum_{}")]pub enum Enum{} {{{}}} {}"#,
                     name,
                     name.to_case(Case::Pascal),
-                    fields.join(",")
+                    fields.join(","),
+                    impl_try_from_i32,
                 )
             }
             x => x.to_rust_ref(),

@@ -1,57 +1,129 @@
 use num_derive::FromPrimitive;
 use serde::*;
-use strum_macros::EnumString;
+use strum_macros::{Display, EnumString};
 use tokio_postgres::types::*;
-
 #[derive(
-    Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize, FromPrimitive, PartialEq, EnumString,
+    Debug,
+    Clone,
+    Copy,
+    ToSql,
+    FromSql,
+    Serialize,
+    Deserialize,
+    FromPrimitive,
+    PartialEq,
+    EnumString,
+    Display,
 )]
 #[postgres(name = "enum_role")]
 pub enum EnumRole {
-    #[postgres(name = "guest")]
+    #[strum(to_string = "guest")]
     Guest = 0,
-    #[postgres(name = "user")]
+    #[strum(to_string = "user")]
     User = 1,
-    #[postgres(name = "admin")]
+    #[strum(to_string = "admin")]
     Admin = 2,
-    #[postgres(name = "developer")]
+    #[strum(to_string = "developer")]
     Developer = 3,
 }
+impl std::convert::TryFrom<i32> for EnumRole {
+    type Error = ();
+
+    fn try_from(v: i32) -> Result<Self, Self::Error> {
+        match v {
+            0 => Ok(EnumRole::Guest),
+            1 => Ok(EnumRole::User),
+            2 => Ok(EnumRole::Admin),
+            3 => Ok(EnumRole::Developer),
+            _ => Err(()),
+        }
+    }
+}
 #[derive(
-    Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize, FromPrimitive, PartialEq, EnumString,
+    Debug,
+    Clone,
+    Copy,
+    ToSql,
+    FromSql,
+    Serialize,
+    Deserialize,
+    FromPrimitive,
+    PartialEq,
+    EnumString,
+    Display,
 )]
 #[postgres(name = "enum_recovery_question_category")]
 pub enum EnumRecoveryQuestionCategory {
-    #[postgres(name = "childhood")]
+    #[strum(to_string = "childhood")]
     Childhood = 0,
-    #[postgres(name = "education")]
+    #[strum(to_string = "education")]
     Education = 1,
-    #[postgres(name = "family")]
+    #[strum(to_string = "family")]
     Family = 2,
-    #[postgres(name = "favorite")]
+    #[strum(to_string = "favorite")]
     Favorite = 3,
-    #[postgres(name = "first")]
+    #[strum(to_string = "first")]
     First = 4,
-    #[postgres(name = "personal")]
+    #[strum(to_string = "personal")]
     Personal = 5,
-    #[postgres(name = "pet")]
+    #[strum(to_string = "pet")]
     Pet = 6,
-    #[postgres(name = "work")]
+    #[strum(to_string = "work")]
     Work = 7,
-    #[postgres(name = "historical")]
+    #[strum(to_string = "historical")]
     Historical = 8,
 }
+impl std::convert::TryFrom<i32> for EnumRecoveryQuestionCategory {
+    type Error = ();
+
+    fn try_from(v: i32) -> Result<Self, Self::Error> {
+        match v {
+            0 => Ok(EnumRecoveryQuestionCategory::Childhood),
+            1 => Ok(EnumRecoveryQuestionCategory::Education),
+            2 => Ok(EnumRecoveryQuestionCategory::Family),
+            3 => Ok(EnumRecoveryQuestionCategory::Favorite),
+            4 => Ok(EnumRecoveryQuestionCategory::First),
+            5 => Ok(EnumRecoveryQuestionCategory::Personal),
+            6 => Ok(EnumRecoveryQuestionCategory::Pet),
+            7 => Ok(EnumRecoveryQuestionCategory::Work),
+            8 => Ok(EnumRecoveryQuestionCategory::Historical),
+            _ => Err(()),
+        }
+    }
+}
 #[derive(
-    Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize, FromPrimitive, PartialEq, EnumString,
+    Debug,
+    Clone,
+    Copy,
+    ToSql,
+    FromSql,
+    Serialize,
+    Deserialize,
+    FromPrimitive,
+    PartialEq,
+    EnumString,
+    Display,
 )]
 #[postgres(name = "enum_service")]
 pub enum EnumService {
-    #[postgres(name = "auth")]
+    #[strum(to_string = "auth")]
     Auth = 1,
-    #[postgres(name = "user")]
+    #[strum(to_string = "user")]
     User = 2,
-    #[postgres(name = "admin")]
+    #[strum(to_string = "admin")]
     Admin = 3,
+}
+impl std::convert::TryFrom<i32> for EnumService {
+    type Error = ();
+
+    fn try_from(v: i32) -> Result<Self, Self::Error> {
+        match v {
+            1 => Ok(EnumService::Auth),
+            2 => Ok(EnumService::User),
+            3 => Ok(EnumService::Admin),
+            _ => Err(()),
+        }
+    }
 }
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
