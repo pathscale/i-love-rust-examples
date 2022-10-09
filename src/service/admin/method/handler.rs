@@ -1,12 +1,15 @@
 use eyre::Context;
 use gen::database::*;
 use gen::model::*;
+use lib::database::LocalDbClient;
 use lib::handler::RequestHandler;
 use lib::toolbox::*;
 use lib::ws::*;
 use std::sync::Arc;
 
 pub struct ListUsersHandler;
+
+use super::repository;
 
 impl RequestHandler for ListUsersHandler {
     type Request = ListUsersRequest;
@@ -19,25 +22,26 @@ impl RequestHandler for ListUsersHandler {
         _conn: Arc<Connection>,
         req: Self::Request,
     ) {
-        let db: DbClient = toolbox.get_db();
+        let db: LocalDbClient = toolbox.get_db();
         toolbox.spawn_response(ctx, async move {
-            let result = db
-                .fun_admin_list_users(FunAdminListUsersReq {
+            let result = repository::fun_admin_list_users(
+                &db,
+                FunAdminListUsersReq {
                     offset: req.offset as _,
                     limit: req.limit as _,
-                })
-                .await?;
+                },
+            )
+            .await?;
 
             Ok(ListUsersResponse {
                 users: result
-                    .rows
                     .into_iter()
                     .map(|x| ListUsersResponseRow {
-                        user_public_id: x.user_public_id,
-                        username: x.username,
-                        email: x.email,
-                        created_at: x.created_at as _,
-                        updated_at: x.updated_at as _,
+                        user_public_id: x.1,
+                        email: x.2,
+                        username: x.3,
+                        created_at: x.4 as _,
+                        updated_at: x.5 as _,
                     })
                     .collect(),
             })
@@ -58,16 +62,18 @@ impl RequestHandler for AssignRoleHandler {
         _conn: Arc<Connection>,
         req: Self::Request,
     ) {
-        let db: DbClient = toolbox.get_db();
+        let db: LocalDbClient = toolbox.get_db();
         toolbox.spawn_response(ctx, async move {
-            let result = db
-                .fun_admin_assign_role(FunAdminAssignRoleReq {
+            repository::fun_admin_assign_role(
+                &db,
+                FunAdminAssignRoleReq {
                     operator_user_id: _conn.get_user_id() as _,
                     new_role: req.new_role.parse().context("Failed to parse role")?,
                     user_public_id: req.user_public_id,
-                })
-                .await?;
-            drop(result);
+                },
+            )
+            .await?;
+
             Ok(AssignRoleResponse { success: true })
         });
     }

@@ -1,6 +1,7 @@
 use eyre::*;
 use gen::database::*;
 use gen::model::*;
+use lib::database::LocalDbClient;
 use lib::handler::RequestHandler;
 use lib::toolbox::*;
 use lib::ws::*;
@@ -11,6 +12,7 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use uuid::Uuid;
 
+use super::repository;
 pub struct SignupHandler;
 
 impl RequestHandler for SignupHandler {
@@ -24,7 +26,7 @@ impl RequestHandler for SignupHandler {
         conn: Arc<Connection>,
         req: Self::Request,
     ) {
-        let db: DbClient = toolbox.get_db();
+        let db: LocalDbClient = toolbox.get_db();
         toolbox.spawn_response(ctx, async move {
             let public_id = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -40,19 +42,43 @@ impl RequestHandler for SignupHandler {
             if !agreed_tos {
                 bail!(CustomError::new(
                     StatusCode::BAD_REQUEST,
-                    format!("You must agree to the terms of service"),
+                    format!("terms of service not consented"),
                 ));
             }
             if !agreed_privacy {
                 bail!(CustomError::new(
                     StatusCode::BAD_REQUEST,
-                    format!("You must agree to the privacy policy"),
+                    format!("privacy policy not consented"),
+                ));
+            }
+            if username == "" {
+                bail!(CustomError::new(
+                    StatusCode::BAD_REQUEST,
+                    format!("empty username not allowed"),
+                ));
+            }
+            if req.password.trim() == "" {
+                bail!(CustomError::new(
+                    StatusCode::BAD_REQUEST,
+                    format!("empty password not allowed"),
+                ));
+            }
+            if req.email.trim() == "" {
+                bail!(CustomError::new(
+                    StatusCode::BAD_REQUEST,
+                    format!("invalid email"),
+                ));
+            }
+            if req.phone.trim() == "" {
+                bail!(CustomError::new(
+                    StatusCode::BAD_REQUEST,
+                    format!("invalid phone number"),
                 ));
             }
 
-            db.fun_auth_signup(FunAuthSignupReq {
+            let req = FunAuthSignupReq {
                 public_id,
-                username: username.to_string(),
+                username: username.clone(),
                 email: req.email,
                 phone: req.phone,
                 password_hash,
@@ -62,11 +88,12 @@ impl RequestHandler for SignupHandler {
                 agreed_tos,
                 agreed_privacy,
                 ip_address: conn.address.clone(),
-            })
-            .await?;
+            };
+
+            repository::fun_auth_signup(&db, req).await?;
 
             Ok(SignupResponse {
-                username: username.to_string(),
+                username: username,
                 user_public_id: public_id,
             })
         });
@@ -86,57 +113,88 @@ impl RequestHandler for LoginHandler {
         conn: Arc<Connection>,
         req: Self::Request,
     ) {
-        let db: DbClient = toolbox.get_db();
+        let db: LocalDbClient = toolbox.get_db();
         toolbox.spawn_response(ctx, async move {
             let username = req.username.trim().to_ascii_lowercase();
             let service_code = req.service_code;
             let password = req.password;
-            let data = db
-                .fun_auth_get_password_salt(FunAuthGetPasswordSaltReq {
+
+            if username == "" {
+                bail!(CustomError::new(
+                    StatusCode::BAD_REQUEST,
+                    format!("invalid username"),
+                ));
+            }
+            if password.trim() == "" {
+                bail!(CustomError::new(
+                    StatusCode::BAD_REQUEST,
+                    format!("invalid password"),
+                ));
+            }
+            if req.device_id.trim() == "" {
+                bail!(CustomError::new(
+                    StatusCode::BAD_REQUEST,
+                    format!("invalid device id"),
+                ));
+            }
+            if req.device_os.trim() == "" {
+                bail!(CustomError::new(
+                    StatusCode::BAD_REQUEST,
+                    format!("invalid device os"),
+                ));
+            }
+
+            let salt = repository::fun_auth_get_password_salt(
+                &db,
+                FunAuthGetPasswordSaltReq {
                     username: username.clone(),
-                })
-                .await?;
-            let salt = data
-                .rows
-                .get(0)
-                .ok_or(eyre!("No salt found for user"))?
-                .salt
-                .clone();
+                },
+            )
+            .await?;
 
             let mut hasher = Sha256::new();
 
             hasher.update(password.as_bytes());
             hasher.update(salt.as_slice());
             let password_hash = hasher.finalize().to_vec();
-            let data = db
-                .fun_auth_authenticate(FunAuthAuthenticateReq {
+
+            let (pkey, public_id) = repository::fun_auth_authenticate(
+                &db,
+                FunAuthAuthenticateReq {
                     username: username.clone(),
                     password_hash: password_hash.clone(),
                     service_code: service_code as _,
                     device_id: req.device_id.clone(),
                     device_os: req.device_os.clone(),
                     ip_address: conn.address.clone(),
-                })
-                .await?;
-            let row = data.rows.get(0).ok_or(eyre!("No rows found for user"))?;
+                },
+            )
+            .await?;
+
             let user_token = Uuid::new_v4();
             let admin_token = Uuid::new_v4();
-            db.fun_auth_set_token(FunAuthSetTokenReq {
-                user_id: row.user_id,
-                user_token: user_token.clone(),
-                admin_token: admin_token.clone(),
-                service_code: service_code as _,
-            })
+
+            repository::fun_auth_set_token(
+                &db,
+                FunAuthSetTokenReq {
+                    user_id: pkey,
+                    user_token: user_token.clone(),
+                    admin_token: admin_token.clone(),
+                    service_code: service_code as _,
+                },
+            )
             .await?;
+
             Ok(LoginResponse {
                 username: username.clone(),
-                user_public_id: row.user_public_id,
+                user_public_id: public_id,
                 user_token: user_token.to_string(),
                 admin_token: admin_token.to_string(),
             })
         })
     }
 }
+
 pub fn hash_password(password: &str, salt: impl AsRef<[u8]>) -> Result<Vec<u8>> {
     let mut hasher = Sha256::new();
     hasher.update(password.as_bytes());
@@ -158,9 +216,10 @@ impl RequestHandler for AuthorizeHandler {
         conn: Arc<Connection>,
         req: Self::Request,
     ) {
-        let db: DbClient = toolbox.get_db();
+        let db: LocalDbClient = toolbox.get_db();
         let accept_srv = self.accept_service;
         toolbox.spawn_response(ctx, async move {
+            let username = req.username.trim().to_ascii_lowercase();
             if req.service_code != accept_srv {
                 bail!(CustomError::new(
                     StatusCode::FORBIDDEN,
@@ -170,21 +229,46 @@ impl RequestHandler for AuthorizeHandler {
                     ),
                 ));
             }
-            let auth_data = db
-                .fun_auth_authorize(FunAuthAuthorizeReq {
-                    username: req.username.to_string(),
+            if username == "" {
+                bail!(CustomError::new(
+                    StatusCode::BAD_REQUEST,
+                    format!("invalid username"),
+                ));
+            }
+            if req.token.trim() == "" {
+                bail!(CustomError::new(
+                    StatusCode::BAD_REQUEST,
+                    format!("invalid token"),
+                ));
+            }
+            if req.device_id.trim() == "" {
+                bail!(CustomError::new(
+                    StatusCode::BAD_REQUEST,
+                    format!("invalid device id"),
+                ));
+            }
+            if req.device_os.trim() == "" {
+                bail!(CustomError::new(
+                    StatusCode::BAD_REQUEST,
+                    format!("invalid device os"),
+                ));
+            }
+
+            let auth_data = repository::fun_auth_authorize(
+                &db,
+                FunAuthAuthorizeReq {
+                    username: username,
                     token: Uuid::from_str(&req.token)?,
                     service: req.service_code,
                     device_id: req.device_id,
                     device_os: req.device_os,
                     ip_address: conn.address,
-                })
-                .await?;
-            let auth_data = &auth_data.rows[0];
+                },
+            )
+            .await?;
 
-            conn.user_id
-                .store(auth_data.user_id as _, Ordering::Relaxed);
-            conn.role.store(auth_data.role as _, Ordering::Relaxed);
+            conn.user_id.store(auth_data.0 as _, Ordering::Relaxed);
+            conn.role.store(auth_data.1 as _, Ordering::Relaxed);
             Ok(AuthorizeResponse { success: true })
         })
     }

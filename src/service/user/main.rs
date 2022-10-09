@@ -1,9 +1,9 @@
 use crate::endpoints::endpoint_user_foo;
 use crate::method::FooHandler;
-use iloverust::endpoints::endpoint_auth_authorize;
-use iloverust::method::AuthorizeHandler;
 use eyre::*;
 use gen::model::EnumService;
+use iloverust::endpoints::endpoint_auth_authorize;
+use iloverust::method::AuthorizeHandler;
 use lib::config::load_config;
 use lib::database::connect_to_database;
 use lib::log::setup_logs;

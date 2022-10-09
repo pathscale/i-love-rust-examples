@@ -1,11 +1,11 @@
 mod method;
 
-use crate::endpoints::endpoint_admin_list_users;
-use crate::method::ListUsersHandler;
-use iloverust::endpoints::endpoint_auth_authorize;
-use iloverust::method::AuthorizeHandler;
+use crate::endpoints::{endpoint_admin_assign_role, endpoint_admin_list_users};
+use crate::method::{AssignRoleHandler, ListUsersHandler};
 use eyre::*;
 use gen::model::EnumService;
+use iloverust::endpoints::endpoint_auth_authorize;
+use iloverust::method::AuthorizeHandler;
 use lib::config::load_config;
 use lib::database::connect_to_database;
 use lib::log::setup_logs;
@@ -31,6 +31,7 @@ async fn main() -> Result<()> {
     );
     server.add_auth_controller(auth_controller);
     server.add_handler(endpoint_admin_list_users(), ListUsersHandler);
+    server.add_handler(endpoint_admin_assign_role(), AssignRoleHandler);
     server.listen().await?;
     Ok(())
 }
