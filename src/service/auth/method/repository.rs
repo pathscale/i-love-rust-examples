@@ -407,7 +407,7 @@ pub async fn fun_auth_authorize(
     Ok((pkey, role))
 }
 
-pub async fn fun_auth_change_password(
+pub async fn _fun_auth_change_password(
     db: &LocalDbClient,
     req: FunAuthChangePasswordReq,
 ) -> Result<(), RepositoryError> {
@@ -493,7 +493,7 @@ pub async fn fun_auth_change_password(
     Ok(())
 }
 
-pub async fn fun_get_recovery_question_data(
+pub async fn _fun_get_recovery_question_data(
     db: &LocalDbClient,
     _req: FunGetRecoveryQuestionDataReq,
 ) -> Result<Vec<(i64, String, EnumRecoveryQuestionCategory)>, RepositoryError> {
@@ -524,7 +524,7 @@ pub async fn fun_get_recovery_question_data(
     Ok(rows)
 }
 
-pub async fn fun_auth_set_recovery_questions(
+pub async fn _fun_auth_set_recovery_questions(
     db: &LocalDbClient,
     req: FunAuthSetRecoveryQuestionsReq,
 ) -> Result<(), RepositoryError> {
@@ -573,7 +573,7 @@ pub async fn fun_auth_set_recovery_questions(
     Ok(())
 }
 
-pub async fn fun_auth_basic_authenticate(
+pub async fn _fun_auth_basic_authenticate(
     db: &LocalDbClient,
     req: FunAuthBasicAuthenticateReq,
 ) -> Result<i64, RepositoryError> {
@@ -640,7 +640,7 @@ pub async fn fun_auth_basic_authenticate(
     Ok(pkey)
 }
 
-pub async fn fun_auth_get_recovery_questions(
+pub async fn _fun_auth_get_recovery_questions(
     db: &LocalDbClient,
     req: FunAuthGetRecoveryQuestionsReq,
 ) -> Result<Vec<(i64, String)>, RepositoryError> {
@@ -666,7 +666,7 @@ pub async fn fun_auth_get_recovery_questions(
     Ok(questions)
 }
 
-pub async fn fun_submit_recovery_answers(
+pub async fn _fun_submit_recovery_answers(
     db: &LocalDbClient,
     req: FunSubmitRecoveryAnswersReq,
 ) -> Result<(), RepositoryError> {
@@ -684,7 +684,7 @@ pub async fn fun_submit_recovery_answers(
 
     // checking number of answers provided
     if answers_payload.rows.len() != req.question_ids.len() {
-        return Err(RepositoryError::MustSubmitAllRecoveryQuestionsError(
+        return Err(RepositoryError::_MustSubmitAllRecoveryQuestionsError(
             "must submit all recovery questions",
         ));
     };
@@ -696,12 +696,12 @@ pub async fn fun_submit_recovery_answers(
             .question_ids
             .iter()
             .position(|&q| (q as i64) == question_id)
-            .ok_or(RepositoryError::MustSubmitAllRecoveryQuestionsError(
+            .ok_or(RepositoryError::_MustSubmitAllRecoveryQuestionsError(
                 "must submit all recovery questions",
             ))?;
 
         if req.answers[idx] != row[1].try_string()? {
-            return Err(RepositoryError::WrongRecoveryAnswersError(
+            return Err(RepositoryError::_WrongRecoveryAnswersError(
                 "wrong recovery answer",
             ));
         };
@@ -722,7 +722,7 @@ pub async fn fun_submit_recovery_answers(
     Ok(())
 }
 
-pub async fn fun_auth_reset_password(
+pub async fn _fun_auth_reset_password(
     db: &LocalDbClient,
     req: FunAuthResetPasswordReq,
 ) -> Result<(i64, Vec<u8>, Vec<u8>, Uuid), RepositoryError> {
@@ -752,7 +752,7 @@ pub async fn fun_auth_reset_password(
 
     if affected_rows != 1 {
         db.query("ROLLBACK;", &[]).await?;
-        return Err(RepositoryError::InvalidRecoveryTokenError(
+        return Err(RepositoryError::_InvalidRecoveryTokenError(
             "invalid recovery token",
         ));
     }
@@ -812,9 +812,9 @@ pub enum RepositoryError {
     InvalidPasswordError(&'static str),
     InvalidTokenError(&'static str),
     InvalidServiceError(&'static str),
-    MustSubmitAllRecoveryQuestionsError(&'static str),
-    WrongRecoveryAnswersError(&'static str),
-    InvalidRecoveryTokenError(&'static str),
+    _MustSubmitAllRecoveryQuestionsError(&'static str),
+    _WrongRecoveryAnswersError(&'static str),
+    _InvalidRecoveryTokenError(&'static str),
     DiagnosticError(&'static str),
     LocalDbClientError(lib::database::LocalDbClientError),
     ParseEnumError(&'static str),
@@ -837,9 +837,9 @@ impl std::fmt::Display for RepositoryError {
             Self::InvalidPasswordError(e) => write!(f, "{:?}", e),
             Self::InvalidTokenError(e) => write!(f, "{:?}", e),
             Self::InvalidServiceError(e) => write!(f, "{:?}", e),
-            Self::MustSubmitAllRecoveryQuestionsError(e) => write!(f, "{:?}", e),
-            Self::WrongRecoveryAnswersError(e) => write!(f, "{:?}", e),
-            Self::InvalidRecoveryTokenError(e) => write!(f, "{:?}", e),
+            Self::_MustSubmitAllRecoveryQuestionsError(e) => write!(f, "{:?}", e),
+            Self::_WrongRecoveryAnswersError(e) => write!(f, "{:?}", e),
+            Self::_InvalidRecoveryTokenError(e) => write!(f, "{:?}", e),
             Self::DiagnosticError(e) => write!(f, "{:?}", e),
             Self::LocalDbClientError(e) => write!(f, "{:?}", e),
             Self::ParseEnumError(e) => write!(f, "{:?}", e),
