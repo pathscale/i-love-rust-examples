@@ -7,6 +7,7 @@ use gen::database::FunAuthResetPasswordReq;
 use gen::database::FunAuthSetRecoveryQuestionsReq;
 use gen::database::FunGetRecoveryQuestionDataReq;
 use gen::database::FunSubmitRecoveryAnswersReq;
+use lib::database::LocalDbClientError;
 use uuid::Uuid;
 
 use gen::database::{
@@ -24,10 +25,11 @@ pub async fn fun_auth_signup(
     db: &LocalDbClient,
     req: FunAuthSignupReq,
 ) -> Result<(), RepositoryError> {
+    // creating user
     let timestamp = unix_timestamp();
     db.query(
         "\
-				INSERT INTO user ( \
+				INSERT INTO user (\
 								pkey_id, \
 								public_id, \
 								username, \
@@ -42,7 +44,7 @@ pub async fn fun_auth_signup(
 								created_at, \
 								updated_at, \
 								last_ip) \
-								VALUES ( \
+								VALUES (\
 										?0, \
 										?1, \
 										?2, \
@@ -56,7 +58,7 @@ pub async fn fun_auth_signup(
 										?10, \
 										?11, \
 										?12, \
-										?13); \
+										?13);\
 				",
         &[
             &next_pkey_id(db, "user").await?,
@@ -84,12 +86,13 @@ pub async fn fun_auth_get_password_salt(
     db: &LocalDbClient,
     req: FunAuthGetPasswordSaltReq,
 ) -> Result<Vec<u8>, RepositoryError> {
+    // getting salt
     let salt = db
         .query(
             "\
 						SELECT password_salt \
 								FROM user \
-								WHERE username = ?0; \
+								WHERE username = ?0;\
 						",
             &[&req.username],
         )
@@ -113,7 +116,7 @@ pub async fn fun_auth_authenticate(
             "\
 						SELECT pkey_id, public_id, password_hash, user_role, is_blocked \
 								FROM user \
-								WHERE username = ?0; \
+								WHERE username = ?0;\
 						",
             &[&req.username],
         )
@@ -134,8 +137,8 @@ pub async fn fun_auth_authenticate(
     // checking password ok and registering login attempt
     let password_ok = req.password_hash == hash;
     db.query(
-        "
-				INSERT INTO login_attempt ( \
+        "\
+				INSERT INTO login_attempt (\
 					pkey_id, \
 					fkey_user, \
 					username, \
@@ -143,14 +146,14 @@ pub async fn fun_auth_authenticate(
 					ip_address, \
 					is_password_ok, \
 					moment) \
-					VALUES ( \
+					VALUES (\
 							?0, \
 							?1, \
 							?2, \
 							?3, \
 							?4, \
 							?5, \
-							?6); \
+							?6);\
 				",
         &[
             &next_pkey_id(db, "login_attempt").await?,
@@ -206,13 +209,13 @@ pub async fn fun_auth_authenticate(
     db.query(
         &format!(
             "\
-				UPDATE user SET \
-						last_ip = ?1, \
-						last_login = ?2, \
-						logins_count = logins_count + 1, \
-						{}_device_id = ?3 \
-						WHERE pkey_id = ?0; \
-				",
+						UPDATE user SET \
+								last_ip = ?1, \
+								last_login = ?2, \
+								logins_count = logins_count + 1, \
+								{}_device_id = ?3 \
+								WHERE pkey_id = ?0;\
+						",
             service.to_string()
         ),
         &[
@@ -237,14 +240,14 @@ pub async fn fun_auth_set_token(
             "\
 						SELECT is_blocked \
 								FROM user \
-								WHERE pkey_id = ?0\
+								WHERE pkey_id = ?0;\
 						",
             &[&req.user_id],
         )
         .await?
         .try_next_select()?;
 
-    // check known user and row count
+    // checking known user and row count
     match user_auth_payload.rows.len() {
         1 => (),
         0 => {
@@ -267,6 +270,7 @@ pub async fn fun_auth_set_token(
         ));
     }
 
+    // checking if service is permitted
     let service = EnumService::try_from(req.service_code).map_err(|()| {
         RepositoryError::ConvertEnumError("could not convert service number to enum")
     })?;
@@ -281,13 +285,14 @@ pub async fn fun_auth_set_token(
         }
     };
 
+    // updating token
     db.query(
         &format!(
             "\
-				UPDATE user SET \
-						{}_token = ?0 \
-						WHERE pkey_id = ?1;\
-				",
+						UPDATE user SET \
+								{}_token = ?0 \
+								WHERE pkey_id = ?1;\
+						",
             service.to_string()
         ),
         &[&token, &req.user_id],
@@ -307,7 +312,7 @@ pub async fn fun_auth_authorize(
             "\
 						SELECT pkey_id, user_token, admin_token, user_role \
 								FROM user \
-								WHERE username = ?0\
+								WHERE username = ?0;\
 						",
             &[&req.username],
         )
@@ -315,7 +320,6 @@ pub async fn fun_auth_authorize(
         .try_next_select()?;
 
     let pkey = user_auth_payload.rows[0][0].try_i64()?;
-
     let user_token = Uuid::from_str(
         &user_auth_payload.rows[0][1]
             .possible_string()?
@@ -335,7 +339,7 @@ pub async fn fun_auth_authorize(
         .parse()
         .map_err(|_| RepositoryError::ParseEnumError("could not parse role string to enum"))?;
 
-    // checking token ok and registering login attempt
+    // checking if service is permitted and token ok
     let (service, token_ok) = match req.service {
         EnumService::Admin => (req.service.to_string(), req.token == admin_token),
         EnumService::User => (req.service.to_string(), req.token == user_token),
@@ -345,20 +349,22 @@ pub async fn fun_auth_authorize(
             ))
         }
     };
+
+    // logging authorization attempt
     db.query(
         "\
-				INSERT INTO authorization_attempt ( \
+				INSERT INTO authorization_attempt (\
 						pkey_id, \
 						fkey_user, \
 						ip_address, \
 						is_token_ok, \
 						moment) \
-						VALUES ( \
+						VALUES (\
 								?0, \
 								?1, \
 								?2, \
 								?3, \
-								?4); \
+								?4);\
 				",
         &[
             &next_pkey_id(db, "authorization_attempt").await?,
@@ -369,11 +375,12 @@ pub async fn fun_auth_authorize(
         ],
     )
     .await?;
+
     if !token_ok {
         return Err(RepositoryError::InvalidTokenError("invalid token"));
     }
 
-    // check known user and row count
+    // checking known user and row count
     match user_auth_payload.rows.len() {
         1 => (),
         0 => {
@@ -388,11 +395,11 @@ pub async fn fun_auth_authorize(
     db.query(
         &format!(
             "\
-				UPDATE user SET \
-						{}_device_id = ?1 \
-						WHERE pkey_id = ?0 \
-						AND {}_token = ?2; \
-					",
+						UPDATE user SET \
+								{}_device_id = ?1 \
+								WHERE pkey_id = ?0 \
+								AND {}_token = ?2;\
+						",
             service.to_string(),
             service.to_string(),
         ),
@@ -417,7 +424,7 @@ pub async fn _fun_auth_change_password(
             "\
 						SELECT pkey_id, password_hash, is_blocked \
 								FROM user \
-								WHERE username = ?0; \
+								WHERE username = ?0;\
 						",
             &[&req.username],
         )
@@ -434,7 +441,7 @@ pub async fn _fun_auth_change_password(
     let password_ok = req.old_password_hash == hash;
     db.query(
         "\
-				INSERT INTO login_attempt ( \
+				INSERT INTO login_attempt (\
 					pkey_id, \
 					fkey_user, \
 					username, \
@@ -444,16 +451,16 @@ pub async fn _fun_auth_change_password(
 					device_os,
 					is_password_ok, \
 					moment) \
-					VALUES ( \
+					VALUES (\
 							?0, \
 							?1, \
 							?2, \
 							?3, \
 							?4, \
 							?5, \
-							?6 \
-							?7 \
-							?8); \
+							?6, \
+							?7, \
+							?8);\
 				",
         &[
             &next_pkey_id(db, "login_attempt").await?,
@@ -484,7 +491,7 @@ pub async fn _fun_auth_change_password(
         "\
 				UPDATE user SET \
 						password_hash = ?1, \
-						WHERE pkey_id = ?0; \
+						WHERE pkey_id = ?0;\
 				",
         &[&pkey, &req.new_password_hash],
     )
@@ -497,17 +504,20 @@ pub async fn _fun_get_recovery_question_data(
     db: &LocalDbClient,
     _req: FunGetRecoveryQuestionDataReq,
 ) -> Result<Vec<(i64, String, EnumRecoveryQuestionCategory)>, RepositoryError> {
+    // getting every possible question?
+    // TODO: understand why this query exists
     let recovery_question_payload = db
         .query(
             "\
 						SELECT pkey_id, content, category \
-								FROM recovery_question_data \
+								FROM recovery_question_data\
 						",
             &[],
         )
         .await?
         .try_next_select()?;
 
+    // collecting questions
     let mut rows: Vec<(i64, String, EnumRecoveryQuestionCategory)> = Vec::new();
     for row in recovery_question_payload.rows {
         let id: i64 = row[0].try_i64()?;
@@ -528,19 +538,25 @@ pub async fn _fun_auth_set_recovery_questions(
     db: &LocalDbClient,
     req: FunAuthSetRecoveryQuestionsReq,
 ) -> Result<(), RepositoryError> {
+    // opening set questions transaction
     let affected_rows = db
         .query(
+            // BUG: GlueSQL's transaction will save changes on COMMIT even if
+            // some statements threw an error
+            // TODO: update library and remove multi-request transaction when bug is fixed
             "\
 						BEGIN;\
 						DELETE FROM recovery_question \
-								WHERE fkey_user = ?0; \
+								WHERE fkey_user = ?0;\
 						",
             &[&req.user_id],
         )
         .await?
         .try_next_delete()?;
 
+    // checking user had recovery questions
     if affected_rows == 0 {
+        db.query("ROLLBACK;", &[]).await?;
         return Err(RepositoryError::DiagnosticError(
             "no rows affected from delete recovery questions",
         ));
@@ -550,25 +566,51 @@ pub async fn _fun_auth_set_recovery_questions(
     let mut tokens: Vec<String> = vec![req.user_id.to_string()];
     let mut token_number: i32 = 1;
     for (idx, question) in req.question_ids.into_iter().enumerate() {
+        // constructing query string
         statements.push_str(&format!(
-            "INSERT INTO recovery_question (fkey_user, pkey_id, fkey_question, answer) \
-						VALUES (?0, ?{}, ?{}, ?{});",
+            "\
+						INSERT INTO recovery_question (\
+								fkey_user, \
+								pkey_id, \
+								fkey_question, \
+								answer) \
+								VALUES (\
+										?0, \
+										?{}, \
+										?{}, \
+										?{});\
+						",
             token_number,
             token_number + 1,
             token_number + 2,
         ));
+        // collecting tokens
         tokens.push(next_pkey_id(db, "recovery_question").await?.to_string());
         tokens.push(question.to_string());
         tokens.push(req.answers[idx].to_string());
         token_number += 3;
     }
 
+    // inserting tokens in query
     let tokenized_statement =
         localdb::db::statements::tokenizer::tokenize_statements(&statements, tokens).map_err(
             |_| RepositoryError::Message("could not tokenize set recovery questions statement"),
         )?;
 
-    db.query(&tokenized_statement, &[]).await?;
+    // executing query
+    let payloads = db.query(&tokenized_statement, &[]).await;
+
+    // checking all questions were set
+    match payloads {
+        Ok(_) => (),
+        Err(e) => {
+            db.query("ROLLBACK;", &[]).await?;
+            return Err(e.into());
+        }
+    }
+
+    // closing transaction
+    db.query("COMMIT;", &[]).await?;
 
     Ok(())
 }
@@ -583,7 +625,7 @@ pub async fn _fun_auth_basic_authenticate(
             "\
 						SELECT pkey_id, is_blocked \
 								FROM user \
-								WHERE username = ?0; \
+								WHERE username = ?0;\
 						",
             &[&req.username],
         )
@@ -592,13 +634,11 @@ pub async fn _fun_auth_basic_authenticate(
         .maybe_first_row()
         .ok_or_else(|| RepositoryError::UnknownUserError("cannot login unknown user"))?;
 
-    let pkey = user_auth_row[0].try_i64()?;
-    let blocked = user_auth_row[1].try_bool()?;
-
     // registering login attempt
+    let pkey = user_auth_row[0].try_i64()?;
     db.query(
         "\
-				INSERT INTO login_attempt ( \
+				INSERT INTO login_attempt (\
 					pkey_id, \
 					fkey_user, \
 					username, \
@@ -607,15 +647,15 @@ pub async fn _fun_auth_basic_authenticate(
 					device_id,
 					device_os,
 					moment) \
-					VALUES ( \
+					VALUES (\
 							?0, \
 							?1, \
 							?2, \
 							?3, \
 							?4, \
 							?5, \
-							?6 \
-							?7); \
+							?6, \
+							?7);\
 				",
         &[
             &next_pkey_id(db, "login_attempt").await?,
@@ -623,6 +663,9 @@ pub async fn _fun_auth_basic_authenticate(
             &req.username,
             &"",
             &req.ip_address,
+            // flagging device id to override /src/localdb's token formatter
+            // it currently parses string as numbers if only numerical by default
+            // TODO: SOC completely broken, change soon
             &format!("--force-string{}", req.device_id),
             &req.device_os,
             &unix_timestamp(),
@@ -631,6 +674,7 @@ pub async fn _fun_auth_basic_authenticate(
     .await?;
 
     // checking block status
+    let blocked = user_auth_row[1].try_bool()?;
     if blocked {
         return Err(RepositoryError::BlockedUserError(
             "cannot login blocked user",
@@ -644,20 +688,22 @@ pub async fn _fun_auth_get_recovery_questions(
     db: &LocalDbClient,
     req: FunAuthGetRecoveryQuestionsReq,
 ) -> Result<Vec<(i64, String)>, RepositoryError> {
+    // getting questions
     let questions_payload = db
         .query(
             "\
 						SELECT qd.pkey_id, qd.content \
 								FROM recovery_question_data qd \
-								JOIN recovery_question q
-								ON qd.pkey_id = q.fkey_question
-								WHERE q.fkey_user = ?0; \
+								JOIN recovery_question q \
+								ON qd.pkey_id = q.fkey_question \
+								WHERE q.fkey_user = ?0;\
 						",
             &[&req.user_id],
         )
         .await?
         .try_next_select()?;
 
+    // collecting questions
     let mut questions: Vec<(i64, String)> = Vec::new();
     for row in questions_payload.rows {
         questions.push((row[0].try_i64()?, row[1].try_string()?));
@@ -670,12 +716,13 @@ pub async fn _fun_submit_recovery_answers(
     db: &LocalDbClient,
     req: FunSubmitRecoveryAnswersReq,
 ) -> Result<(), RepositoryError> {
+    // getting answers
     let answers_payload = db
         .query(
             "\
 						SELECT fkey_question, answer \
 								FROM recovery_question \
-								WHERE q.fkey_user = ?0; \
+								WHERE q.fkey_user = ?0;\
 						",
             &[&req.user_id],
         )
@@ -713,7 +760,7 @@ pub async fn _fun_submit_recovery_answers(
 				UPDATE user SET \
 						password_reset_token = ?1, \
 						reset_token_valid = ?2, \
-						WHERE pkey_id = ?0; \
+						WHERE pkey_id = ?0;\
 				",
         &[&req.user_id, &req.password_reset_token, &req.token_valid],
     )
@@ -726,8 +773,12 @@ pub async fn _fun_auth_reset_password(
     db: &LocalDbClient,
     req: FunAuthResetPasswordReq,
 ) -> Result<(i64, Vec<u8>, Vec<u8>, Uuid), RepositoryError> {
+    // opening reset transaction
     let affected_rows = db
         .query(
+            // BUG: GlueSQL's transaction will save changes on COMMIT even if
+            // some statements threw an error
+            // TODO: update library and remove multi-request transaction when bug is fixed
             "\
 						BEGIN; \
 						UPDATE user SET \
@@ -736,8 +787,8 @@ pub async fn _fun_auth_reset_password(
 								password_reset_token = NULL, \
 								reset_token_valid = NULL, \
 								WHERE pkey_id = ?0 \
-								AND password_reset_token = ?3
-								AND reset_token_valid > ?4; \
+								AND password_reset_token = ?3 \
+								AND reset_token_valid > ?4;\
 						",
             &[
                 &req.user_id,
@@ -750,6 +801,7 @@ pub async fn _fun_auth_reset_password(
         .await?
         .try_next_update()?;
 
+    // checking only one reset token exists
     if affected_rows != 1 {
         db.query("ROLLBACK;", &[]).await?;
         return Err(RepositoryError::_InvalidRecoveryTokenError(
@@ -757,6 +809,7 @@ pub async fn _fun_auth_reset_password(
         ));
     }
 
+    // closing transaction
     db.query("COMMIT;", &[]).await?;
 
     Ok((
@@ -768,8 +821,19 @@ pub async fn _fun_auth_reset_password(
 }
 
 async fn next_pkey_id(db: &LocalDbClient, table: &str) -> Result<i64, RepositoryError> {
+    // checking existence of ids at all
     let any_id: i64 = db
-        .query(&format!("SELECT pkey_id FROM {} LIMIT 1;", table), &[])
+        .query(
+            &format!(
+                "\
+								SELECT	pkey_id \
+										FROM {} \
+										LIMIT 1;\
+								",
+                table
+            ),
+            &[],
+        )
         .await?
         .try_next_select()?
         .maybe_first_row()
@@ -777,10 +841,15 @@ async fn next_pkey_id(db: &LocalDbClient, table: &str) -> Result<i64, Repository
         .try_first_value()?
         .try_i64()?;
 
+    // getting max existant id, or zero
     let last_id: i64 = if any_id != -1 {
         db.query(
             &format!(
-                "SELECT pkey_id FROM {} ORDER BY pkey_id DESC LIMIT 1",
+                "\
+								SELECT pkey_id \
+										FROM {} \
+										ORDER BY pkey_id DESC LIMIT 1;\
+								",
                 table
             ),
             &[],
@@ -798,6 +867,7 @@ async fn next_pkey_id(db: &LocalDbClient, table: &str) -> Result<i64, Repository
 }
 
 fn unix_timestamp() -> i64 {
+    // seconds since january 1st, 1970
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -816,7 +886,7 @@ pub enum RepositoryError {
     _WrongRecoveryAnswersError(&'static str),
     _InvalidRecoveryTokenError(&'static str),
     DiagnosticError(&'static str),
-    LocalDbClientError(lib::database::LocalDbClientError),
+    LocalDbClientError(LocalDbClientError),
     ParseEnumError(&'static str),
     ConvertEnumError(&'static str),
     ParsePayloadError(ParsePayloadError),
@@ -857,8 +927,8 @@ impl std::fmt::Display for RepositoryError {
 
 impl std::error::Error for RepositoryError {}
 
-impl From<lib::database::LocalDbClientError> for RepositoryError {
-    fn from(e: lib::database::LocalDbClientError) -> Self {
+impl From<LocalDbClientError> for RepositoryError {
+    fn from(e: LocalDbClientError) -> Self {
         Self::LocalDbClientError(e)
     }
 }
