@@ -1,0 +1,219 @@
+{
+    "meta": {
+        "__export_time": 1665296303964,
+        "__export_app": "firecamp_v2.7.1 ",
+        "__export_version": 1
+    },
+    "project": {
+        "name": "admin",
+        "description": "",
+        "auth": {},
+        "scripts": {
+            "pre": "",
+            "post": "",
+            "test": ""
+        },
+        "meta": {
+            "active_auth": "no_auth"
+        }
+    },
+    "modules": [],
+    "requests": [
+        {
+            "meta": {
+                "name": "list_users",
+                "description": "",
+                "type": "websocket",
+                "version": "2.0"
+            },
+            "url": {
+                "slashes": true,
+                "protocol": "ws:",
+                "hash": "",
+                "query": "",
+                "pathname": "/ListUsers",
+                "auth": "",
+                "host": "localhost:8891",
+                "port": "8891",
+                "hostname": "localhost",
+                "password": "",
+                "username": "",
+                "origin": "ws://localhost:8891",
+                "href": "ws://localhost:8891/ListUsers",
+                "query_params": [],
+                "path_params": []
+            },
+            "config": {
+                "protocols": [],
+                "reconnect": false,
+                "reconnectAttempts": 3,
+                "reconnectTimeout": 3000,
+                "rejectUnauthorized": false,
+                "followRedirects": true,
+                "handshakeTimeout": 3000,
+                "maxRedirects": 10,
+                "protocolVersion": 13,
+                "origin": "",
+                "maxPayload": -1
+            },
+            "connections": [
+                {
+                    "name": "Default",
+                    "headers": [
+                        {
+                            "key": "Connection",
+                            "value": "upgrade",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Upgrade",
+                            "value": "websocket",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Sec-WebSocket-Version",
+                            "value": "13",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Accept",
+                            "value": "sec-websocket-accept",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Sec-WebSocket-Protocol",
+                            "value": "0authorize,1user_one,201234567890123456789012345678901,33,43849823798,5android",
+                            "disable": false,
+                            "type": "text"
+                        }
+                    ],
+                    "query_params": [],
+                    "config": {
+                        "ping": false,
+                        "ping_interval": 3000
+                    },
+                    "is_default": true
+                }
+            ],
+            "message_collection": []
+        },
+        {
+            "meta": {
+                "name": "assign_role",
+                "description": "",
+                "type": "websocket",
+                "version": "2.0"
+            },
+            "url": {
+                "slashes": true,
+                "protocol": "ws:",
+                "hash": "",
+                "query": "",
+                "pathname": "/AssignRole",
+                "auth": "",
+                "host": "localhost:8891",
+                "port": "8891",
+                "hostname": "localhost",
+                "password": "",
+                "username": "",
+                "origin": "ws://localhost:8891",
+                "href": "ws://localhost:8891/AssignRole",
+                "query_params": [],
+                "path_params": []
+            },
+            "config": {
+                "protocols": [],
+                "reconnect": false,
+                "reconnectAttempts": 3,
+                "reconnectTimeout": 3000,
+                "rejectUnauthorized": false,
+                "followRedirects": true,
+                "handshakeTimeout": 3000,
+                "maxRedirects": 10,
+                "protocolVersion": 13,
+                "origin": "",
+                "maxPayload": -1
+            },
+            "connections": [
+                {
+                    "name": "Default",
+                    "headers": [
+                        {
+                            "key": "Connection",
+                            "value": "upgrade",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Upgrade",
+                            "value": "websocket",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Sec-WebSocket-Version",
+                            "value": "13",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Accept",
+                            "value": "sec-websocket-accept",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Sec-WebSocket-Protocol",
+                            "value": "0authorize,1user_one,201234567890123456789012345678901,33,43849823798,5android",
+                            "disable": false,
+                            "type": "text"
+                        }
+                    ],
+                    "query_params": [],
+                    "config": {
+                        "ping": false,
+                        "ping_interval": 3000
+                    },
+                    "is_default": true
+                }
+            ],
+            "message_collection": []
+        }
+    ],
+    "environments": [
+        {
+            "name": "Development",
+            "variables": {
+                "list_users_json": {
+                    "__comment__": "auth parameters go in the 'Sec-WebSocket-Protocol' header field followed by a number that identifies the parameter and separated by commas, every route besides signup and login should call the authorize method e.g.: 0auth_method_in_lowercase(signup,login,authorize --authorize in this case),1user_name,2token_acquired_at_login,3service_number(1=auth, 2=user, 3=admin --3 in this case),4device_id,5device_OS --look in the headers for a live example --authorization happens when the websocket connection is established",
+                    "method": 30010,
+                    "seq": 1,
+                    "params": {
+                        "offset": 0,
+                        "limit": 10
+                    }
+                },
+                "assign_role_json": {
+                    "__comment__": "auth parameters go in the 'Sec-WebSocket-Protocol' header field followed by a number that identifies the parameter and separated by commas, every route besides signup and login should call the authorize method e.g.: 0auth_method_in_lowercase(signup,login,authorize --authorize in this case),1user_name,2token_acquired_at_login,3service_number(1=auth, 2=user, 3=admin --3 in this case),4device_id,5device_OS --look in the headers for a live example --authorization happens when the websocket connection is established",
+                    "method": 30020,
+                    "seq": 1,
+                    "params": {
+                        "operatorUserId": 1665295567655925800,
+                        "userPublicId": 1665295551201615600,
+                        "newRole": "admin"
+                    }
+                }
+            }
+        },
+        {
+            "name": "Production",
+            "variables": {
+                "variable_name": "variable_value"
+            }
+        }
+    ]
+}

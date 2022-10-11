@@ -1,0 +1,212 @@
+{
+    "meta": {
+        "__export_time": 1665295921524,
+        "__export_app": "firecamp_v2.7.1 ",
+        "__export_version": 1
+    },
+    "project": {
+        "name": "auth",
+        "description": "",
+        "auth": {},
+        "scripts": {
+            "pre": "",
+            "post": "",
+            "test": ""
+        },
+        "meta": {
+            "active_auth": "no_auth"
+        }
+    },
+    "modules": [],
+    "requests": [
+        {
+            "meta": {
+                "name": "1_signup",
+                "description": "",
+                "type": "websocket",
+                "version": "2.0"
+            },
+            "url": {
+                "slashes": true,
+                "protocol": "ws:",
+                "hash": "",
+                "query": "",
+                "pathname": "/Signup",
+                "auth": "",
+                "host": "localhost:8889",
+                "port": "8889",
+                "hostname": "localhost",
+                "password": "",
+                "username": "",
+                "origin": "ws://localhost:8889",
+                "href": "ws://localhost:8889/Signup",
+                "query_params": [],
+                "path_params": []
+            },
+            "config": {
+                "protocols": [],
+                "reconnect": false,
+                "reconnectAttempts": 3,
+                "reconnectTimeout": 3000,
+                "rejectUnauthorized": false,
+                "followRedirects": true,
+                "handshakeTimeout": 3000,
+                "maxRedirects": 10,
+                "protocolVersion": 13,
+                "origin": "",
+                "maxPayload": -1
+            },
+            "connections": [
+                {
+                    "name": "Default",
+                    "headers": [
+                        {
+                            "key": "Content-type",
+                            "value": "application/json",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Connection",
+                            "value": "upgrade",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Upgrade",
+                            "value": "websocket",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Sec-WebSocket-Version",
+                            "value": "13",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Accept",
+                            "value": "sec-websocket-accept",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Sec-WebSocket-Protocol",
+                            "value": "0signup,1user_one,2placeholder_password,3user_one@gmail,4+00123456,5true,6true",
+                            "disable": false,
+                            "type": "text"
+                        }
+                    ],
+                    "query_params": [],
+                    "config": {
+                        "ping": false,
+                        "ping_interval": 3000
+                    },
+                    "is_default": true
+                }
+            ],
+            "message_collection": []
+        },
+        {
+            "meta": {
+                "name": "2_login",
+                "description": "",
+                "type": "websocket",
+                "version": "2.0"
+            },
+            "url": {
+                "slashes": true,
+                "protocol": "ws:",
+                "hash": "",
+                "query": "",
+                "pathname": "/Login",
+                "auth": "",
+                "host": "localhost:8889",
+                "port": "8889",
+                "hostname": "localhost",
+                "password": "",
+                "username": "",
+                "origin": "ws://localhost:8889",
+                "href": "ws://localhost:8889/Login",
+                "query_params": [],
+                "path_params": []
+            },
+            "config": {
+                "protocols": [],
+                "reconnect": false,
+                "reconnectAttempts": 3,
+                "reconnectTimeout": 3000,
+                "rejectUnauthorized": false,
+                "followRedirects": true,
+                "handshakeTimeout": 3000,
+                "maxRedirects": 10,
+                "protocolVersion": 13,
+                "origin": "",
+                "maxPayload": -1
+            },
+            "connections": [
+                {
+                    "name": "Default",
+                    "headers": [
+                        {
+                            "key": "Connection",
+                            "value": "upgrade",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Upgrade",
+                            "value": "websocket",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Sec-WebSocket-Version",
+                            "value": "13",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Accept",
+                            "value": "sec-websocket-accept",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Sec-WebSocket-Protocol",
+                            "value": "0login,1user_one,2placeholder_password,32,43849823798,5android",
+                            "disable": false,
+                            "type": "text"
+                        }
+                    ],
+                    "query_params": [],
+                    "config": {
+                        "ping": false,
+                        "ping_interval": 3000
+                    },
+                    "is_default": true
+                }
+            ],
+            "message_collection": []
+        }
+    ],
+    "environments": [
+        {
+            "name": "Production",
+            "variables": {
+                "variable_name": "variable_value"
+            }
+        },
+        {
+            "name": "Development",
+            "variables": {
+                "login_json": {
+                    "__comment__": "auth parameters go in the 'Sec-WebSocket-Protocol' header field followed by a number that identifies the parameter and separated by commas. The login route calls method 'login' method e.g.: 0auth_method_in_lowercase(signup,login,authorize --login in this case),1user_name_registered_at_signup,2password_registered_at_signup,3service_number(1=auth, 2=user, 3=admin --1 in this case),4device_id,5device_OS --look in the headers for a live example --authorization happens when the websocket connection is established --login returns a user token, an admin token, and a user public id that can be used in other routes"
+                },
+                "signup_json": {
+                    "__comment__": "auth parameters go in the 'Sec-WebSocket-Protocol' header field followed by a number that identifies the parameter and separated by commas. The signup route calls method 'signup' method e.g.: 0auth_method_in_lowercase(signup,login,authorize --login in this case),1user_name,2user_password,3user_email,4user_phone_number,5agreed_tos )terms of service boolean --true in this case),6agreed_privacy (more terms --true in this case) --look in the headers for a live example --authorization happens when the websocket connection is established"
+                }
+            }
+        }
+    ]
+}
