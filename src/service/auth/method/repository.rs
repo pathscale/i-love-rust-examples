@@ -1,19 +1,23 @@
 use std::str::FromStr;
 
-use gen::database::FunAuthBasicAuthenticateReq;
-use gen::database::FunAuthChangePasswordReq;
-use gen::database::FunAuthGetRecoveryQuestionsReq;
-use gen::database::FunAuthResetPasswordReq;
-use gen::database::FunAuthSetRecoveryQuestionsReq;
-use gen::database::FunGetRecoveryQuestionDataReq;
-use gen::database::FunSubmitRecoveryAnswersReq;
 use lib::database::LocalDbClientError;
 use lib::id_gen::{ConcurrentSnowflake, ConcurrentSnowflakeError};
 use uuid::Uuid;
 
 use gen::database::{
-    FunAuthAuthenticateReq, FunAuthAuthorizeReq, FunAuthGetPasswordSaltReq, FunAuthSetTokenReq,
-    FunAuthSignupReq,
+    FunAuthAuthenticateReq, FunAuthAuthenticateResp, FunAuthAuthenticateRespRow,
+    FunAuthAuthorizeReq, FunAuthAuthorizeResp, FunAuthAuthorizeRespRow,
+    FunAuthBasicAuthenticateReq, FunAuthBasicAuthenticateResp, FunAuthBasicAuthenticateRespRow,
+    FunAuthChangePasswordReq, FunAuthChangePasswordResp, FunAuthChangePasswordRespRow,
+    FunAuthGetPasswordSaltReq, FunAuthGetPasswordSaltResp, FunAuthGetPasswordSaltRespRow,
+    FunAuthGetRecoveryQuestionsReq, FunAuthGetRecoveryQuestionsResp,
+    FunAuthGetRecoveryQuestionsRespRow, FunAuthResetPasswordReq, FunAuthResetPasswordResp,
+    FunAuthResetPasswordRespRow, FunAuthSetRecoveryQuestionsReq, FunAuthSetRecoveryQuestionsResp,
+    FunAuthSetRecoveryQuestionsRespRow, FunAuthSetTokenReq, FunAuthSetTokenResp,
+    FunAuthSetTokenRespRow, FunAuthSignupReq, FunAuthSignupResp, FunAuthSignupRespRow,
+    FunGetRecoveryQuestionDataReq, FunGetRecoveryQuestionDataResp,
+    FunGetRecoveryQuestionDataRespRow, FunSubmitRecoveryAnswersReq, FunSubmitRecoveryAnswersResp,
+    FunSubmitRecoveryAnswersRespRow,
 };
 use lib::database::LocalDbClient;
 
@@ -25,9 +29,10 @@ pub async fn fun_auth_signup(
     db: &LocalDbClient,
     mut snowflake: ConcurrentSnowflake,
     req: FunAuthSignupReq,
-) -> Result<(), RepositoryError> {
+) -> Result<FunAuthSignupResp, RepositoryError> {
     // creating user
     let timestamp = unix_timestamp();
+    let pkey_id = snowflake.gen()?;
     db.query(
         "\
 				INSERT INTO user (\
@@ -62,7 +67,7 @@ pub async fn fun_auth_signup(
 										?13);\
 				",
         &[
-            &snowflake.gen()?,
+            &pkey_id,
             &req.public_id,
             &req.username,
             &req.email,
@@ -80,13 +85,15 @@ pub async fn fun_auth_signup(
     )
     .await?;
 
-    Ok(())
+    Ok(FunAuthSignupResp {
+        rows: vec![FunAuthSignupRespRow { user_id: pkey_id }],
+    })
 }
 
 pub async fn fun_auth_get_password_salt(
     db: &LocalDbClient,
     req: FunAuthGetPasswordSaltReq,
-) -> Result<Vec<u8>, RepositoryError> {
+) -> Result<FunAuthGetPasswordSaltResp, RepositoryError> {
     // getting salt
     let salt = db
         .query(
@@ -104,14 +111,16 @@ pub async fn fun_auth_get_password_salt(
         .try_first_value()?
         .try_bytea()?;
 
-    Ok(salt)
+    Ok(FunAuthGetPasswordSaltResp {
+        rows: vec![FunAuthGetPasswordSaltRespRow { salt: salt }],
+    })
 }
 
 pub async fn fun_auth_authenticate(
     db: &LocalDbClient,
     mut snowflake: ConcurrentSnowflake,
     req: FunAuthAuthenticateReq,
-) -> Result<(i64, i64), RepositoryError> {
+) -> Result<FunAuthAuthenticateResp, RepositoryError> {
     // looking up user
     let user_auth_row = db
         .query(
@@ -127,7 +136,7 @@ pub async fn fun_auth_authenticate(
         .maybe_first_row()
         .ok_or_else(|| RepositoryError::UnknownUserError("cannot login unknown user"))?;
 
-    let pkey = user_auth_row[0].try_i64()?;
+    let pkey_id = user_auth_row[0].try_i64()?;
     let public_id = user_auth_row[1].try_i64()?;
     let hash = user_auth_row[2].try_bytea()?;
     let role: EnumRole = user_auth_row[3]
@@ -159,7 +168,7 @@ pub async fn fun_auth_authenticate(
 				",
         &[
             &snowflake.gen()?,
-            &pkey,
+            &pkey_id,
             &req.username,
             &req.password_hash,
             &req.ip_address,
@@ -221,7 +230,7 @@ pub async fn fun_auth_authenticate(
             service.to_string()
         ),
         &[
-            &pkey,
+            &pkey_id,
             &req.ip_address,
             &unix_timestamp(),
             &format!(r#"--force-string{}"#, req.device_id),
@@ -229,13 +238,18 @@ pub async fn fun_auth_authenticate(
     )
     .await?;
 
-    Ok((pkey, public_id))
+    Ok(FunAuthAuthenticateResp {
+        rows: vec![FunAuthAuthenticateRespRow {
+            user_id: pkey_id,
+            user_public_id: public_id,
+        }],
+    })
 }
 
 pub async fn fun_auth_set_token(
     db: &LocalDbClient,
     req: FunAuthSetTokenReq,
-) -> Result<(), RepositoryError> {
+) -> Result<FunAuthSetTokenResp, RepositoryError> {
     // looking up user
     let mut user_auth_payload = db
         .query(
@@ -301,14 +315,16 @@ pub async fn fun_auth_set_token(
     )
     .await?;
 
-    Ok(())
+    Ok(FunAuthSetTokenResp {
+        rows: vec![FunAuthSetTokenRespRow {}],
+    })
 }
 
 pub async fn fun_auth_authorize(
     db: &LocalDbClient,
     mut snowflake: ConcurrentSnowflake,
     req: FunAuthAuthorizeReq,
-) -> Result<(i64, EnumRole), RepositoryError> {
+) -> Result<FunAuthAuthorizeResp, RepositoryError> {
     // looking up user
     let user_auth_payload = db
         .query(
@@ -322,7 +338,7 @@ pub async fn fun_auth_authorize(
         .await?
         .try_next_select()?;
 
-    let pkey = user_auth_payload.rows[0][0].try_i64()?;
+    let pkey_id = user_auth_payload.rows[0][0].try_i64()?;
     let user_token = Uuid::from_str(
         &user_auth_payload.rows[0][1]
             .possible_string()?
@@ -371,7 +387,7 @@ pub async fn fun_auth_authorize(
 				",
         &[
             &snowflake.gen()?,
-            &pkey,
+            &pkey_id,
             &req.ip_address,
             &token_ok,
             &unix_timestamp(),
@@ -407,21 +423,26 @@ pub async fn fun_auth_authorize(
             service.to_string(),
         ),
         &[
-            &pkey,
+            &pkey_id,
             &format!(r#"--force-string{}"#, req.device_id),
             &req.token,
         ],
     )
     .await?;
 
-    Ok((pkey, role))
+    Ok(FunAuthAuthorizeResp {
+        rows: vec![FunAuthAuthorizeRespRow {
+            user_id: pkey_id,
+            role: role,
+        }],
+    })
 }
 
 pub async fn _fun_auth_change_password(
     db: &LocalDbClient,
     mut snowflake: ConcurrentSnowflake,
     req: FunAuthChangePasswordReq,
-) -> Result<(), RepositoryError> {
+) -> Result<FunAuthChangePasswordResp, RepositoryError> {
     // looking up user
     let user_auth_row = db
         .query(
@@ -437,7 +458,7 @@ pub async fn _fun_auth_change_password(
         .maybe_first_row()
         .ok_or_else(|| RepositoryError::UnknownUserError("cannot login unknown user"))?;
 
-    let pkey = user_auth_row[0].try_i64()?;
+    let pkey_id = user_auth_row[0].try_i64()?;
     let hash = user_auth_row[1].try_bytea()?;
     let blocked = user_auth_row[2].try_bool()?;
 
@@ -468,7 +489,7 @@ pub async fn _fun_auth_change_password(
 				",
         &[
             &snowflake.gen()?,
-            &pkey,
+            &pkey_id,
             &req.username,
             &req.old_password_hash,
             &req.ip_address,
@@ -497,17 +518,19 @@ pub async fn _fun_auth_change_password(
 						password_hash = ?1, \
 						WHERE pkey_id = ?0;\
 				",
-        &[&pkey, &req.new_password_hash],
+        &[&pkey_id, &req.new_password_hash],
     )
     .await?;
 
-    Ok(())
+    Ok(FunAuthChangePasswordResp {
+        rows: vec![FunAuthChangePasswordRespRow {}],
+    })
 }
 
 pub async fn _fun_get_recovery_question_data(
     db: &LocalDbClient,
     _req: FunGetRecoveryQuestionDataReq,
-) -> Result<Vec<(i64, String, EnumRecoveryQuestionCategory)>, RepositoryError> {
+) -> Result<FunGetRecoveryQuestionDataResp, RepositoryError> {
     // getting every possible question?
     // TODO: understand why this query exists
     let recovery_question_payload = db
@@ -522,7 +545,7 @@ pub async fn _fun_get_recovery_question_data(
         .try_next_select()?;
 
     // collecting questions
-    let mut rows: Vec<(i64, String, EnumRecoveryQuestionCategory)> = Vec::new();
+    let mut rows: Vec<FunGetRecoveryQuestionDataRespRow> = Vec::new();
     for row in recovery_question_payload.rows {
         let id: i64 = row[0].try_i64()?;
         let content: String = row[1].try_string()?;
@@ -532,17 +555,21 @@ pub async fn _fun_get_recovery_question_data(
                     "could not parse recovery question category string to enum",
                 )
             })?;
-        rows.push((id, content, category));
+        rows.push(FunGetRecoveryQuestionDataRespRow {
+            question_id: id,
+            content: content,
+            category: category,
+        });
     }
 
-    Ok(rows)
+    Ok(FunGetRecoveryQuestionDataResp { rows: rows })
 }
 
 pub async fn _fun_auth_set_recovery_questions(
     db: &LocalDbClient,
     mut snowflake: ConcurrentSnowflake,
     req: FunAuthSetRecoveryQuestionsReq,
-) -> Result<(), RepositoryError> {
+) -> Result<FunAuthSetRecoveryQuestionsResp, RepositoryError> {
     // opening set questions transaction
     let affected_rows = db
         .query(
@@ -617,14 +644,16 @@ pub async fn _fun_auth_set_recovery_questions(
     // closing transaction
     db.query("COMMIT;", &[]).await?;
 
-    Ok(())
+    Ok(FunAuthSetRecoveryQuestionsResp {
+        rows: vec![FunAuthSetRecoveryQuestionsRespRow {}],
+    })
 }
 
 pub async fn _fun_auth_basic_authenticate(
     db: &LocalDbClient,
     mut snowflake: ConcurrentSnowflake,
     req: FunAuthBasicAuthenticateReq,
-) -> Result<i64, RepositoryError> {
+) -> Result<FunAuthBasicAuthenticateResp, RepositoryError> {
     // looking up user
     let user_auth_row = db
         .query(
@@ -641,7 +670,7 @@ pub async fn _fun_auth_basic_authenticate(
         .ok_or_else(|| RepositoryError::UnknownUserError("cannot login unknown user"))?;
 
     // registering login attempt
-    let pkey = user_auth_row[0].try_i64()?;
+    let pkey_id = user_auth_row[0].try_i64()?;
     db.query(
         "\
 				INSERT INTO login_attempt (\
@@ -665,7 +694,7 @@ pub async fn _fun_auth_basic_authenticate(
 				",
         &[
             &snowflake.gen()?,
-            &pkey,
+            &pkey_id,
             &req.username,
             &"",
             &req.ip_address,
@@ -687,13 +716,17 @@ pub async fn _fun_auth_basic_authenticate(
         ));
     }
 
-    Ok(pkey)
+    Ok(FunAuthBasicAuthenticateResp {
+        rows: vec![FunAuthBasicAuthenticateRespRow {
+            user_id: req.ip_address,
+        }],
+    })
 }
 
 pub async fn _fun_auth_get_recovery_questions(
     db: &LocalDbClient,
     req: FunAuthGetRecoveryQuestionsReq,
-) -> Result<Vec<(i64, String)>, RepositoryError> {
+) -> Result<FunAuthGetRecoveryQuestionsResp, RepositoryError> {
     // getting questions
     let questions_payload = db
         .query(
@@ -710,18 +743,21 @@ pub async fn _fun_auth_get_recovery_questions(
         .try_next_select()?;
 
     // collecting questions
-    let mut questions: Vec<(i64, String)> = Vec::new();
+    let mut rows: Vec<FunAuthGetRecoveryQuestionsRespRow> = Vec::new();
     for row in questions_payload.rows {
-        questions.push((row[0].try_i64()?, row[1].try_string()?));
+        rows.push(FunAuthGetRecoveryQuestionsRespRow {
+            question_id: row[0].try_i64()?,
+            question: row[1].try_string()?,
+        });
     }
 
-    Ok(questions)
+    Ok(FunAuthGetRecoveryQuestionsResp { rows: rows })
 }
 
 pub async fn _fun_submit_recovery_answers(
     db: &LocalDbClient,
     req: FunSubmitRecoveryAnswersReq,
-) -> Result<(), RepositoryError> {
+) -> Result<FunSubmitRecoveryAnswersResp, RepositoryError> {
     // getting answers
     let answers_payload = db
         .query(
@@ -772,13 +808,15 @@ pub async fn _fun_submit_recovery_answers(
     )
     .await?;
 
-    Ok(())
+    Ok(FunSubmitRecoveryAnswersResp {
+        rows: vec![FunSubmitRecoveryAnswersRespRow {}],
+    })
 }
 
 pub async fn _fun_auth_reset_password(
     db: &LocalDbClient,
     req: FunAuthResetPasswordReq,
-) -> Result<(i64, Vec<u8>, Vec<u8>, Uuid), RepositoryError> {
+) -> Result<FunAuthResetPasswordResp, RepositoryError> {
     // opening reset transaction
     let affected_rows = db
         .query(
@@ -818,12 +856,9 @@ pub async fn _fun_auth_reset_password(
     // closing transaction
     db.query("COMMIT;", &[]).await?;
 
-    Ok((
-        req.user_id,
-        req.new_password_hash,
-        req.new_password_salt,
-        req.reset_token,
-    ))
+    Ok(FunAuthResetPasswordResp {
+        rows: vec![FunAuthResetPasswordRespRow {}],
+    })
 }
 
 fn unix_timestamp() -> i64 {

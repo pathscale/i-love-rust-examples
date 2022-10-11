@@ -148,13 +148,15 @@ impl RequestHandler for LoginHandler {
                 ));
             }
 
-            let salt = repository::fun_auth_get_password_salt(
+            let salt = &repository::fun_auth_get_password_salt(
                 &db,
                 FunAuthGetPasswordSaltReq {
                     username: username.clone(),
                 },
             )
-            .await?;
+            .await?
+            .rows[0]
+                .salt;
 
             let mut hasher = Sha256::new();
 
@@ -162,7 +164,7 @@ impl RequestHandler for LoginHandler {
             hasher.update(salt.as_slice());
             let password_hash = hasher.finalize().to_vec();
 
-            let (pkey, public_id) = repository::fun_auth_authenticate(
+            let auth_data = &repository::fun_auth_authenticate(
                 &db,
                 snowflake,
                 FunAuthAuthenticateReq {
@@ -174,7 +176,8 @@ impl RequestHandler for LoginHandler {
                     ip_address: conn.address.clone(),
                 },
             )
-            .await?;
+            .await?
+            .rows[0];
 
             let user_token = Uuid::new_v4();
             let admin_token = Uuid::new_v4();
@@ -182,7 +185,7 @@ impl RequestHandler for LoginHandler {
             repository::fun_auth_set_token(
                 &db,
                 FunAuthSetTokenReq {
-                    user_id: pkey,
+                    user_id: auth_data.user_id,
                     user_token: user_token.clone(),
                     admin_token: admin_token.clone(),
                     service_code: service_code as _,
@@ -192,7 +195,7 @@ impl RequestHandler for LoginHandler {
 
             Ok(LoginResponse {
                 username: username.clone(),
-                user_public_id: public_id,
+                user_public_id: auth_data.user_public_id,
                 user_token: user_token.to_string(),
                 admin_token: admin_token.to_string(),
             })
@@ -261,7 +264,7 @@ impl RequestHandler for AuthorizeHandler {
                 ));
             }
 
-            let auth_data = repository::fun_auth_authorize(
+            let auth_data = &repository::fun_auth_authorize(
                 &db,
                 snowflake,
                 FunAuthAuthorizeReq {
@@ -273,10 +276,12 @@ impl RequestHandler for AuthorizeHandler {
                     ip_address: conn.address,
                 },
             )
-            .await?;
+            .await?
+            .rows[0];
 
-            conn.user_id.store(auth_data.0 as _, Ordering::Relaxed);
-            conn.role.store(auth_data.1 as _, Ordering::Relaxed);
+            conn.user_id
+                .store(auth_data.user_id as _, Ordering::Relaxed);
+            conn.role.store(auth_data.role as _, Ordering::Relaxed);
             Ok(AuthorizeResponse { success: true })
         })
     }

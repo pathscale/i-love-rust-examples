@@ -2,13 +2,16 @@ use lib::database::LocalDbClient;
 
 use localdb::parsetools::*;
 
-use gen::database::{FunAdminAssignRoleReq, FunAdminListUsersReq};
+use gen::database::{
+    FunAdminAssignRoleReq, FunAdminAssignRoleResp, FunAdminAssignRoleRespRow, FunAdminListUsersReq,
+    FunAdminListUsersResp, FunAdminListUsersRespRow,
+};
 use gen::model::EnumRole;
 
 pub async fn fun_admin_list_users(
     db: &LocalDbClient,
     req: FunAdminListUsersReq,
-) -> Result<Vec<(i64, i64, String, String, EnumRole, i64, i64)>, RepositoryError> {
+) -> Result<FunAdminListUsersResp, RepositoryError> {
     let users_payload = db
         .query(
             "\
@@ -23,31 +26,31 @@ pub async fn fun_admin_list_users(
         .await?
         .try_next_select()?;
 
-    let mut users: Vec<(i64, i64, String, String, EnumRole, i64, i64)> = Vec::new();
+    let mut rows: Vec<FunAdminListUsersRespRow> = Vec::new();
     for row in users_payload.rows {
         let role: EnumRole = row[4]
             .try_string()?
             .parse()
             .map_err(|_| RepositoryError::ParseEnumError("could not parse role string to enum"))?;
 
-        users.push((
-            row[0].try_i64()?,
-            row[1].try_i64()?,
-            row[2].try_string()?,
-            row[3].try_string()?,
-            role,
-            row[5].try_i64()?,
-            row[6].try_i64()?,
-        ));
+        rows.push(FunAdminListUsersRespRow {
+            user_id: row[0].try_i64()?,
+            user_public_id: row[1].try_i64()?,
+            email: row[2].try_string()?,
+            username: row[3].try_string()?,
+            role: role,
+            updated_at: row[5].try_i64()?,
+            created_at: row[6].try_i64()?,
+        });
     }
 
-    Ok(users)
+    Ok(FunAdminListUsersResp { rows: rows })
 }
 
 pub async fn fun_admin_assign_role(
     db: &LocalDbClient,
     req: FunAdminAssignRoleReq,
-) -> Result<(), RepositoryError> {
+) -> Result<FunAdminAssignRoleResp, RepositoryError> {
     let operator_role: EnumRole = db
         .query(
             "\
@@ -85,7 +88,9 @@ pub async fn fun_admin_assign_role(
         return Err(RepositoryError::DiagnosticError("user role not updated"));
     };
 
-    Ok(())
+    Ok(FunAdminAssignRoleResp {
+        rows: vec![FunAdminAssignRoleRespRow {}],
+    })
 }
 
 #[derive(Debug)]

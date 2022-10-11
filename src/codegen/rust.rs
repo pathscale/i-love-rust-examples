@@ -100,19 +100,19 @@ impl ToRust for Type {
     }
 }
 
-pub fn get_parameter_type(this: &ProceduralFunction) -> Type {
+pub fn get_parameter_type(this: &RepositoryFunction) -> Type {
     Type::object(
         format!("{}Req", this.name.to_case(Case::Pascal)),
         this.parameters.clone(),
     )
 }
-pub fn get_return_row_type(this: &ProceduralFunction) -> Type {
+pub fn get_return_row_type(this: &RepositoryFunction) -> Type {
     Type::object(
         format!("{}RespRow", this.name.to_case(Case::Pascal)),
         this.returns.clone(),
     )
 }
-pub fn get_return_type(this: &ProceduralFunction) -> Type {
+pub fn get_return_type(this: &RepositoryFunction) -> Type {
     Type::object(
         format!("{}Resp", this.name.to_case(Case::Pascal)),
         vec![Field::new(
@@ -122,7 +122,7 @@ pub fn get_return_type(this: &ProceduralFunction) -> Type {
     )
 }
 
-pub fn to_rust_type_decl(this: &ProceduralFunction) -> String {
+pub fn to_rust_type_decl(this: &RepositoryFunction) -> String {
     [
         get_parameter_type(this),
         get_return_row_type(this),

@@ -24,24 +24,25 @@ impl RequestHandler for ListUsersHandler {
     ) {
         let db: LocalDbClient = toolbox.get_db();
         toolbox.spawn_response(ctx, async move {
-            let result = repository::fun_admin_list_users(
+            let rows = repository::fun_admin_list_users(
                 &db,
                 FunAdminListUsersReq {
                     offset: req.offset as _,
                     limit: req.limit as _,
                 },
             )
-            .await?;
+            .await?
+            .rows;
 
             Ok(ListUsersResponse {
-                users: result
+                users: rows
                     .into_iter()
                     .map(|x| ListUsersResponseRow {
-                        user_public_id: x.1,
-                        email: x.2,
-                        username: x.3,
-                        created_at: x.5 as _,
-                        updated_at: x.6 as _,
+                        user_public_id: x.user_public_id,
+                        email: x.email,
+                        username: x.username,
+                        created_at: x.created_at as _,
+                        updated_at: x.updated_at as _,
                     })
                     .collect(),
             })

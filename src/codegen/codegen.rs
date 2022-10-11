@@ -137,7 +137,7 @@ pub fn rustfmt(f: &str) -> Result<()> {
     Ok(())
 }
 pub fn gen_db_rs(dir: &str) -> Result<()> {
-    let funcs = services::get_proc_functions();
+    let funcs = services::get_repo_functions();
 
     let db_filename = format!("{}/database.rs", dir);
     let mut db = File::create(&db_filename)?;
@@ -146,40 +146,14 @@ pub fn gen_db_rs(dir: &str) -> Result<()> {
         &mut db,
         "{}",
         r#"
-use eyre::*;
-use lib::database::*;
-use crate::model::*;
-
-#[derive(Clone)]
-pub struct DbClient {
-    client: SimpleDbClient
-}
-impl DbClient {
-    pub fn new(client: SimpleDbClient) -> Self {
-        Self {
-            client
-        }
-    }
-}
-impl From<SimpleDbClient> for DbClient {
-    fn from(client: SimpleDbClient) -> Self {
-        Self::new(client)
-    }
-}
-    "#
+    use eyre::*;
+    use lib::database::*;
+    use crate::model::*;
+		"#
     )?;
+
     for func in funcs {
-        write!(
-            &mut db,
-            "
-{}
-impl DbClient {{ 
-    #[allow(unused_variables)]
-    {}
-}}",
-            to_rust_type_decl(&func),
-            to_rust_decl(&func)
-        )?;
+        write!(&mut db, "{}", to_rust_type_decl(&func),)?;
     }
     db.flush()?;
     drop(db);
