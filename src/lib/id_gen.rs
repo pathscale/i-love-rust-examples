@@ -23,11 +23,14 @@ _
  is roughly sortable by creation order
 _
 
-that equates to 131071 unique ids per service per millisecond
+maximum of 131071 unique ids per service per millisecond
 i.e. over 131 million unique ids per service per second
 i.e. over 524 million unique ids per second using 4 services
 
 */
+
+const MAX_17_BITS: u32 = 131071;
+const MAX_2_BITS: u16 = 3;
 
 pub struct ConcurrentSnowflake {
     inner: Arc<Mutex<Snowflake>>,
@@ -96,9 +99,9 @@ impl Snowflake {
     }
 
     pub fn with_epoch(service_id: u16, epoch: SystemTime) -> Result<Self, SnowflakeError> {
-        if service_id > 4 {
+        if service_id > MAX_2_BITS {
             return Err(SnowflakeError::InvalidServiceIdError(
-                "service id must fit in 4 bits",
+                "service id must fit in 2 bits",
             ));
         }
         Ok(Self {
@@ -121,7 +124,7 @@ impl Snowflake {
     }
 
     fn next_seq(&mut self) -> u32 {
-        self.seq = (self.seq + 1) % 131071;
+        self.seq = (self.seq + 1) % MAX_17_BITS;
         self.seq
     }
 
