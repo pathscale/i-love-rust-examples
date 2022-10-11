@@ -88,8 +88,7 @@ impl ToRust for Type {
                     )
                 });
                 format!(
-                    r#"#[derive(Debug, Clone, Copy, ToSql, FromSql, Serialize, Deserialize, FromPrimitive, PartialEq, EnumString, Display)] #[postgres(name = "enum_{}")]pub enum Enum{} {{{}}} {}"#,
-                    name,
+                    r#"#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, EnumString, Display)] pub enum Enum{} {{{}}} {}"#,
                     name.to_case(Case::Pascal),
                     fields.join(","),
                     impl_try_from_i32,

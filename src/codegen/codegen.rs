@@ -65,9 +65,7 @@ pub fn gen_model_rs(dir: &str) -> Result<()> {
         r#"
 use tokio_postgres::types::*;
 use serde::*;
-use num_derive::FromPrimitive;
-use strum_macros::EnumString;
-
+use strum_macros::{EnumString,Display};
     "#
     )?;
     for e in enums::get_enums() {

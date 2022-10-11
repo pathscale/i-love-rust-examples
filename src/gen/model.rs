@@ -1,21 +1,6 @@
-use num_derive::FromPrimitive;
 use serde::*;
 use strum_macros::{Display, EnumString};
-use tokio_postgres::types::*;
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    ToSql,
-    FromSql,
-    Serialize,
-    Deserialize,
-    FromPrimitive,
-    PartialEq,
-    EnumString,
-    Display,
-)]
-#[postgres(name = "enum_role")]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, EnumString, Display)]
 pub enum EnumRole {
     #[strum(to_string = "guest")]
     Guest = 0,
@@ -39,20 +24,7 @@ impl std::convert::TryFrom<i32> for EnumRole {
         }
     }
 }
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    ToSql,
-    FromSql,
-    Serialize,
-    Deserialize,
-    FromPrimitive,
-    PartialEq,
-    EnumString,
-    Display,
-)]
-#[postgres(name = "enum_recovery_question_category")]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, EnumString, Display)]
 pub enum EnumRecoveryQuestionCategory {
     #[strum(to_string = "childhood")]
     Childhood = 0,
@@ -91,20 +63,7 @@ impl std::convert::TryFrom<i32> for EnumRecoveryQuestionCategory {
         }
     }
 }
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    ToSql,
-    FromSql,
-    Serialize,
-    Deserialize,
-    FromPrimitive,
-    PartialEq,
-    EnumString,
-    Display,
-)]
-#[postgres(name = "enum_service")]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, EnumString, Display)]
 pub enum EnumService {
     #[strum(to_string = "auth")]
     Auth = 1,
