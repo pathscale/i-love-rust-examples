@@ -3,6 +3,7 @@ use gen::database::*;
 use gen::model::*;
 use lib::database::LocalDbClient;
 use lib::handler::RequestHandler;
+use lib::id_gen::ConcurrentSnowflake;
 use lib::toolbox::*;
 use lib::ws::*;
 use reqwest::StatusCode;
@@ -13,7 +14,9 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use super::repository;
-pub struct SignupHandler;
+pub struct SignupHandler {
+    pub id_gen: ConcurrentSnowflake,
+}
 
 impl RequestHandler for SignupHandler {
     type Request = SignupRequest;
@@ -27,11 +30,9 @@ impl RequestHandler for SignupHandler {
         req: Self::Request,
     ) {
         let db: LocalDbClient = toolbox.get_db();
+        let mut snowflake = self.id_gen.clone();
         toolbox.spawn_response(ctx, async move {
-            let public_id = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos() as i64;
+            let public_id = snowflake.gen()?;
             let salt = Uuid::new_v4();
             let password_hash = hash_password(&req.password, salt.as_bytes())?;
             let username = req.username.trim().to_ascii_lowercase();
@@ -90,7 +91,7 @@ impl RequestHandler for SignupHandler {
                 ip_address: conn.address.clone(),
             };
 
-            repository::fun_auth_signup(&db, req).await?;
+            repository::fun_auth_signup(&db, snowflake, req).await?;
 
             Ok(SignupResponse {
                 username: username,
@@ -100,7 +101,9 @@ impl RequestHandler for SignupHandler {
     }
 }
 
-pub struct LoginHandler;
+pub struct LoginHandler {
+    pub id_gen: ConcurrentSnowflake,
+}
 
 impl RequestHandler for LoginHandler {
     type Request = LoginRequest;
@@ -114,6 +117,7 @@ impl RequestHandler for LoginHandler {
         req: Self::Request,
     ) {
         let db: LocalDbClient = toolbox.get_db();
+        let snowflake = self.id_gen.clone();
         toolbox.spawn_response(ctx, async move {
             let username = req.username.trim().to_ascii_lowercase();
             let service_code = req.service_code;
@@ -160,6 +164,7 @@ impl RequestHandler for LoginHandler {
 
             let (pkey, public_id) = repository::fun_auth_authenticate(
                 &db,
+                snowflake,
                 FunAuthAuthenticateReq {
                     username: username.clone(),
                     password_hash: password_hash.clone(),
@@ -204,6 +209,7 @@ pub fn hash_password(password: &str, salt: impl AsRef<[u8]>) -> Result<Vec<u8>> 
 
 pub struct AuthorizeHandler {
     pub accept_service: EnumService,
+    pub id_gen: ConcurrentSnowflake,
 }
 impl RequestHandler for AuthorizeHandler {
     type Request = AuthorizeRequest;
@@ -217,6 +223,7 @@ impl RequestHandler for AuthorizeHandler {
         req: Self::Request,
     ) {
         let db: LocalDbClient = toolbox.get_db();
+        let snowflake = self.id_gen.clone();
         let accept_srv = self.accept_service;
         toolbox.spawn_response(ctx, async move {
             let username = req.username.trim().to_ascii_lowercase();
@@ -256,6 +263,7 @@ impl RequestHandler for AuthorizeHandler {
 
             let auth_data = repository::fun_auth_authorize(
                 &db,
+                snowflake,
                 FunAuthAuthorizeReq {
                     username: username,
                     token: Uuid::from_str(&req.token)?,

@@ -8,6 +8,7 @@ use gen::database::FunAuthSetRecoveryQuestionsReq;
 use gen::database::FunGetRecoveryQuestionDataReq;
 use gen::database::FunSubmitRecoveryAnswersReq;
 use lib::database::LocalDbClientError;
+use lib::id_gen::{ConcurrentSnowflake, ConcurrentSnowflakeError};
 use uuid::Uuid;
 
 use gen::database::{
@@ -17,12 +18,12 @@ use gen::database::{
 use lib::database::LocalDbClient;
 
 use localdb::parsetools::*;
-use localdb::Value;
 
 use gen::model::{EnumRecoveryQuestionCategory, EnumRole, EnumService};
 
 pub async fn fun_auth_signup(
     db: &LocalDbClient,
+    mut snowflake: ConcurrentSnowflake,
     req: FunAuthSignupReq,
 ) -> Result<(), RepositoryError> {
     // creating user
@@ -61,7 +62,7 @@ pub async fn fun_auth_signup(
 										?13);\
 				",
         &[
-            &next_pkey_id(db, "user").await?,
+            &snowflake.gen()?,
             &req.public_id,
             &req.username,
             &req.email,
@@ -108,6 +109,7 @@ pub async fn fun_auth_get_password_salt(
 
 pub async fn fun_auth_authenticate(
     db: &LocalDbClient,
+    mut snowflake: ConcurrentSnowflake,
     req: FunAuthAuthenticateReq,
 ) -> Result<(i64, i64), RepositoryError> {
     // looking up user
@@ -156,7 +158,7 @@ pub async fn fun_auth_authenticate(
 							?6);\
 				",
         &[
-            &next_pkey_id(db, "login_attempt").await?,
+            &snowflake.gen()?,
             &pkey,
             &req.username,
             &req.password_hash,
@@ -304,6 +306,7 @@ pub async fn fun_auth_set_token(
 
 pub async fn fun_auth_authorize(
     db: &LocalDbClient,
+    mut snowflake: ConcurrentSnowflake,
     req: FunAuthAuthorizeReq,
 ) -> Result<(i64, EnumRole), RepositoryError> {
     // looking up user
@@ -367,7 +370,7 @@ pub async fn fun_auth_authorize(
 								?4);\
 				",
         &[
-            &next_pkey_id(db, "authorization_attempt").await?,
+            &snowflake.gen()?,
             &pkey,
             &req.ip_address,
             &token_ok,
@@ -416,6 +419,7 @@ pub async fn fun_auth_authorize(
 
 pub async fn _fun_auth_change_password(
     db: &LocalDbClient,
+    mut snowflake: ConcurrentSnowflake,
     req: FunAuthChangePasswordReq,
 ) -> Result<(), RepositoryError> {
     // looking up user
@@ -463,7 +467,7 @@ pub async fn _fun_auth_change_password(
 							?8);\
 				",
         &[
-            &next_pkey_id(db, "login_attempt").await?,
+            &snowflake.gen()?,
             &pkey,
             &req.username,
             &req.old_password_hash,
@@ -536,6 +540,7 @@ pub async fn _fun_get_recovery_question_data(
 
 pub async fn _fun_auth_set_recovery_questions(
     db: &LocalDbClient,
+    mut snowflake: ConcurrentSnowflake,
     req: FunAuthSetRecoveryQuestionsReq,
 ) -> Result<(), RepositoryError> {
     // opening set questions transaction
@@ -585,7 +590,7 @@ pub async fn _fun_auth_set_recovery_questions(
             token_number + 2,
         ));
         // collecting tokens
-        tokens.push(next_pkey_id(db, "recovery_question").await?.to_string());
+        tokens.push(snowflake.gen()?.to_string());
         tokens.push(question.to_string());
         tokens.push(req.answers[idx].to_string());
         token_number += 3;
@@ -617,6 +622,7 @@ pub async fn _fun_auth_set_recovery_questions(
 
 pub async fn _fun_auth_basic_authenticate(
     db: &LocalDbClient,
+    mut snowflake: ConcurrentSnowflake,
     req: FunAuthBasicAuthenticateReq,
 ) -> Result<i64, RepositoryError> {
     // looking up user
@@ -658,7 +664,7 @@ pub async fn _fun_auth_basic_authenticate(
 							?7);\
 				",
         &[
-            &next_pkey_id(db, "login_attempt").await?,
+            &snowflake.gen()?,
             &pkey,
             &req.username,
             &"",
@@ -820,52 +826,6 @@ pub async fn _fun_auth_reset_password(
     ))
 }
 
-async fn next_pkey_id(db: &LocalDbClient, table: &str) -> Result<i64, RepositoryError> {
-    // checking existence of ids at all
-    let any_id: i64 = db
-        .query(
-            &format!(
-                "\
-								SELECT	pkey_id \
-										FROM {} \
-										LIMIT 1;\
-								",
-                table
-            ),
-            &[],
-        )
-        .await?
-        .try_next_select()?
-        .maybe_first_row()
-        .unwrap_or(vec![Value::I64(-1)])
-        .try_first_value()?
-        .try_i64()?;
-
-    // getting max existant id, or zero
-    let last_id: i64 = if any_id != -1 {
-        db.query(
-            &format!(
-                "\
-								SELECT pkey_id \
-										FROM {} \
-										ORDER BY pkey_id DESC LIMIT 1;\
-								",
-                table
-            ),
-            &[],
-        )
-        .await?
-        .try_next_select()?
-        .try_first_row()?
-        .try_first_value()?
-        .try_i64()?
-    } else {
-        -1
-    };
-
-    Ok(last_id + 1)
-}
-
 fn unix_timestamp() -> i64 {
     // seconds since january 1st, 1970
     std::time::SystemTime::now()
@@ -887,6 +847,7 @@ pub enum RepositoryError {
     _InvalidRecoveryTokenError(&'static str),
     DiagnosticError(&'static str),
     LocalDbClientError(LocalDbClientError),
+    ConcurrentSnowflakeError(ConcurrentSnowflakeError),
     ParseEnumError(&'static str),
     ConvertEnumError(&'static str),
     ParsePayloadError(ParsePayloadError),
@@ -912,6 +873,7 @@ impl std::fmt::Display for RepositoryError {
             Self::_InvalidRecoveryTokenError(e) => write!(f, "{:?}", e),
             Self::DiagnosticError(e) => write!(f, "{:?}", e),
             Self::LocalDbClientError(e) => write!(f, "{:?}", e),
+            Self::ConcurrentSnowflakeError(e) => write!(f, "{:?}", e),
             Self::ParseEnumError(e) => write!(f, "{:?}", e),
             Self::ConvertEnumError(e) => write!(f, "{:?}", e),
             Self::ParsePayloadError(e) => write!(f, "{:?}", e),
@@ -930,6 +892,12 @@ impl std::error::Error for RepositoryError {}
 impl From<LocalDbClientError> for RepositoryError {
     fn from(e: LocalDbClientError) -> Self {
         Self::LocalDbClientError(e)
+    }
+}
+
+impl From<ConcurrentSnowflakeError> for RepositoryError {
+    fn from(e: ConcurrentSnowflakeError) -> Self {
+        Self::ConcurrentSnowflakeError(e)
     }
 }
 
