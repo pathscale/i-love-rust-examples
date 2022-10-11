@@ -40,8 +40,8 @@ impl RequestHandler for ListUsersHandler {
                         user_public_id: x.1,
                         email: x.2,
                         username: x.3,
-                        created_at: x.4 as _,
-                        updated_at: x.5 as _,
+                        created_at: x.5 as _,
+                        updated_at: x.6 as _,
                     })
                     .collect(),
             })
