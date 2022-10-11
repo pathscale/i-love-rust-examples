@@ -15,8 +15,6 @@ serde_json = "*"
 eyre = "*"
 convert_case = "*"
 itertools = "*"
-postgres-types = { version = "*", features = ["derive"] }
-tokio-postgres = { version = "*", features = ["with-uuid-1"] }
 uuid = "*"
 lib = { path = "../lib" }
 bytes = "*"

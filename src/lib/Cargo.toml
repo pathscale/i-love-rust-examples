@@ -37,10 +37,9 @@ ijson = "*"
 peroxide = "*"
 chrono = "*"
 static_assertions = "*"
-tokio-postgres = "*"
 uuid = "*"
 virtual-table = { git = "https://github.com/nschoellhorn/virtual-table" }
-deadpool = { version = "*", features = ["serde"] }
+deadpool = { version = "*", features = ["serde", "rt_tokio_1"] }
 model = { path = "../model" }
 rustls = "0.20.6"
 rustls-pemfile = "0.3.0"

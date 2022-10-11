@@ -29,7 +29,6 @@ serde_json = "*"
 peroxide = "*"
 chrono = "*"
 static_assertions = "*"
-deadpool-postgres = "*"
 model = { path = "src/model" }
 gen = { path = "src/gen" }
 lib = { path = "src/lib" }

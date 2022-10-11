@@ -1,13 +1,9 @@
 pub mod rust;
 pub mod service;
-pub mod sql;
 
-use crate::rust::{to_rust_decl, to_rust_type_decl, ToRust};
+use crate::rust::{to_rust_type_decl, ToRust};
 use crate::service::get_systemd_service;
-use crate::sql::ToSql;
-use convert_case::{Case, Casing};
 use eyre::*;
-use itertools::Itertools;
 use model::service::Service;
 use model::types::*;
 use serde::*;
@@ -63,7 +59,6 @@ pub fn gen_model_rs(dir: &str) -> Result<()> {
         &mut f,
         "{}",
         r#"
-use tokio_postgres::types::*;
 use serde::*;
 use strum_macros::{EnumString,Display};
     "#
@@ -98,30 +93,7 @@ use strum_macros::{EnumString,Display};
 
     Ok(())
 }
-pub fn gen_model_sql(root: &str) -> Result<()> {
-    let db_filename = format!("{}/db/model.sql", root);
-    let mut f = File::create(db_filename)?;
 
-    for e in enums::get_enums() {
-        match e {
-            Type::Enum { name, variants } => {
-                writeln!(
-                    &mut f,
-                    "CREATE TYPE enum_{} AS ENUM ({});",
-                    name,
-                    variants
-                        .into_iter()
-                        .map(|x| format!("'{}'", x.name))
-                        .join(", ")
-                )?;
-            }
-            _ => unreachable!(),
-        }
-    }
-    f.flush()?;
-    drop(f);
-    Ok(())
-}
 pub fn rustfmt(f: &str) -> Result<()> {
     let exit = Command::new("rustfmt")
         .arg("--edition")
@@ -134,6 +106,7 @@ pub fn rustfmt(f: &str) -> Result<()> {
     }
     Ok(())
 }
+
 pub fn gen_db_rs(dir: &str) -> Result<()> {
     let funcs = services::get_repo_functions();
 
@@ -144,8 +117,6 @@ pub fn gen_db_rs(dir: &str) -> Result<()> {
         &mut db,
         "{}",
         r#"
-    use eyre::*;
-    use lib::database::*;
     use crate::model::*;
 		"#
     )?;
@@ -159,33 +130,6 @@ pub fn gen_db_rs(dir: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn gen_db_sql(root: &str) -> Result<()> {
-    let funcs = services::get_proc_functions();
-
-    let db_filename = format!("{}/db/api.sql", root);
-    let mut f = File::create(&db_filename)?;
-    writeln!(&mut f, "{}", r#"CREATE SCHEMA IF NOT EXISTS api;"#)?;
-    for func in funcs {
-        writeln!(&mut f, "{}", func.to_sql())?;
-    }
-    for srv in services::get_services() {
-        writeln!(
-            &mut f,
-            "{}",
-            ProceduralFunction::new(
-                format!("{}_SERVICE", srv.name.to_case(Case::ScreamingSnake)),
-                vec![],
-                vec![Field::new("code", Type::Int)],
-                format!("BEGIN RETURN QUERY SELECT {}; END", srv.id),
-            )
-            .to_sql()
-        )?;
-    }
-    f.flush()?;
-    drop(f);
-
-    Ok(())
-}
 #[derive(Debug, Serialize, Deserialize)]
 struct Docs {
     services: Vec<Service>,
@@ -243,8 +187,6 @@ pub fn main() -> Result<()> {
     create_dir_all(&dir)?;
     gen_docs(root)?;
     gen_model_rs(&dir)?;
-    gen_model_sql(root)?;
-    gen_db_sql(root)?;
     gen_db_rs(&dir)?;
     gen_systemd_services(
         root,

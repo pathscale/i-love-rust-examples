@@ -155,23 +155,6 @@ impl Toolbox {
                 Err(err) if err.downcast_ref::<NoResp>().is_some() => {
                     return;
                 }
-
-                Err(err0) if err0.downcast_ref::<tokio_postgres::Error>().is_some() => {
-                    let err = err0.downcast_ref::<tokio_postgres::Error>().unwrap();
-                    if let Some(code) = err.code() {
-                        if let Ok(err) = CustomError::from_sql_error(code.code(), &err0) {
-                            request_error_to_resp(&ctx, err.code, err)
-                        } else {
-                            internal_error_to_resp(
-                                &ctx,
-                                StatusCode::INTERNAL_SERVER_ERROR.into(),
-                                err0,
-                            )
-                        }
-                    } else {
-                        internal_error_to_resp(&ctx, StatusCode::INTERNAL_SERVER_ERROR.into(), err0)
-                    }
-                }
                 Err(err) if err.downcast_ref::<CustomError>().is_some() => {
                     let err = err.downcast::<CustomError>().unwrap();
                     request_error_to_resp(&ctx, err.code, err)

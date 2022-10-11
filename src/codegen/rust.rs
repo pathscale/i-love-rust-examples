@@ -1,5 +1,3 @@
-use crate::sql::ToSql;
-use crate::SYMBOL;
 use convert_case::{Case, Casing};
 use itertools::Itertools;
 use model::types::*;
@@ -77,8 +75,7 @@ impl ToRust for Type {
 														}
 												"#
                     .to_string(),
-                ]
-                .join("");
+                ];
                 let mut fields = fields.iter().map(|x| {
                     format!(
                         r#"#[strum(to_string = "{}")]{} = {}"#,
@@ -91,7 +88,7 @@ impl ToRust for Type {
                     r#"#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, EnumString, Display)] pub enum Enum{} {{{}}} {}"#,
                     name.to_case(Case::Pascal),
                     fields.join(","),
-                    impl_try_from_i32,
+                    impl_try_from_i32.join(""),
                 )
             }
             x => x.to_rust_ref(),
@@ -129,43 +126,4 @@ pub fn to_rust_type_decl(this: &RepositoryFunction) -> String {
     ]
     .map(|x| x.to_rust_decl())
     .join("\n")
-}
-pub fn to_rust_decl(this: &ProceduralFunction) -> String {
-    let mut arguments = this
-        .parameters
-        .iter()
-        .enumerate()
-        .map(|(i, x)| format!("{}{} => ${}::{}", SYMBOL, x.name, i + 1, x.ty.to_sql()));
-    let sql = format!("SELECT * FROM api.{}({});", this.name, arguments.join(", "));
-    let pg_params = this
-        .parameters
-        .iter()
-        .map(|x| format!("&req.{}", x.name))
-        .join(", ");
-    let row_getter = this
-        .returns
-        .iter()
-        .enumerate()
-        .map(|(i, x)| format!("{}: row.try_get({})?", x.name, i))
-        .join(",\n");
-    format!(
-        "pub async fn {name_raw}(&self, req: {name}Req) -> Result<{name}Resp> {{
-          let rows = self.client.query(\"{sql}\", &[{pg_params}]).await?;
-          let mut resp = {name}Resp {{
-              rows: Vec::with_capacity(rows.len())
-          }};
-          for row in rows {{
-            let r = {name}RespRow {{
-              {row_getter}
-            }};
-            resp.rows.push(r);
-          }}
-          Ok(resp)
-        }}",
-        name_raw = this.name,
-        name = this.name.to_case(Case::Pascal),
-        sql = sql,
-        pg_params = pg_params,
-        row_getter = row_getter
-    )
 }
