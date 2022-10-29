@@ -2,10 +2,7 @@ use lib::database::LocalDbClient;
 
 use localdb::parsetools::*;
 
-use gen::database::{
-    FunAdminAssignRoleReq, FunAdminAssignRoleResp, FunAdminAssignRoleRespRow, FunAdminListUsersReq,
-    FunAdminListUsersResp, FunAdminListUsersRespRow,
-};
+use gen::database::*;
 use gen::model::EnumRole;
 
 pub async fn fun_admin_list_users(

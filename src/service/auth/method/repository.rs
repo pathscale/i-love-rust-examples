@@ -4,21 +4,7 @@ use lib::database::LocalDbClientError;
 use lib::id_gen::{ConcurrentSnowflake, ConcurrentSnowflakeError};
 use uuid::Uuid;
 
-use gen::database::{
-    FunAuthAuthenticateReq, FunAuthAuthenticateResp, FunAuthAuthenticateRespRow,
-    FunAuthAuthorizeReq, FunAuthAuthorizeResp, FunAuthAuthorizeRespRow,
-    FunAuthBasicAuthenticateReq, FunAuthBasicAuthenticateResp, FunAuthBasicAuthenticateRespRow,
-    FunAuthChangePasswordReq, FunAuthChangePasswordResp, FunAuthChangePasswordRespRow,
-    FunAuthGetPasswordSaltReq, FunAuthGetPasswordSaltResp, FunAuthGetPasswordSaltRespRow,
-    FunAuthGetRecoveryQuestionsReq, FunAuthGetRecoveryQuestionsResp,
-    FunAuthGetRecoveryQuestionsRespRow, FunAuthResetPasswordReq, FunAuthResetPasswordResp,
-    FunAuthResetPasswordRespRow, FunAuthSetRecoveryQuestionsReq, FunAuthSetRecoveryQuestionsResp,
-    FunAuthSetRecoveryQuestionsRespRow, FunAuthSetTokenReq, FunAuthSetTokenResp,
-    FunAuthSetTokenRespRow, FunAuthSignupReq, FunAuthSignupResp, FunAuthSignupRespRow,
-    FunGetRecoveryQuestionDataReq, FunGetRecoveryQuestionDataResp,
-    FunGetRecoveryQuestionDataRespRow, FunSubmitRecoveryAnswersReq, FunSubmitRecoveryAnswersResp,
-    FunSubmitRecoveryAnswersRespRow,
-};
+use gen::database::*;
 use lib::database::LocalDbClient;
 
 use localdb::parsetools::*;
