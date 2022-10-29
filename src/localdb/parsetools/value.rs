@@ -1,3 +1,4 @@
+use thiserror::Error;
 use uuid::Uuid;
 
 use super::Value;
@@ -168,55 +169,46 @@ impl ParsableValue for Value {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ParseValueError {
+    #[error("i8 not actual value")]
     I8NotActualValueError,
+    #[error("i8 is null")]
     I8NullError,
+    #[error("i16 not actual value")]
     I16NotActualValueError,
+    #[error("i16 is null")]
     I16NullError,
+    #[error("i32 not actual value")]
     I32NotActualValueError,
+    #[error("i32 is null")]
     I32NullError,
+    #[error("i64 not actual value")]
     I64NotActualValueError,
+    #[error("i64 is null")]
     I64NullError,
+    #[error("i128 not actual value")]
     I128NotActualValueError,
+    #[error("i128 is null")]
     I128NullError,
+    #[error("f64 not actual value")]
     F64NotActualValueError,
+    #[error("f64 is null")]
     F64NullError,
+    #[error("bool not actual value")]
     BoolNotActualValueError,
+    #[error("bool is null")]
     BoolNullError,
+    #[error("string not actual value")]
     StringNotActualValueError,
+    #[error("string is null")]
     StringNullError,
+    #[error("bytea not actual value")]
     ByteaNotActualValueError,
+    #[error("bytea is null")]
     ByteaNullError,
+    #[error("uuid not actual value")]
     UuidNotActualValueError,
+    #[error("uuid is null")]
     UuidNullError,
 }
-
-impl std::fmt::Display for ParseValueError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::I8NotActualValueError => write!(f, "{:?}", "could not parse value to i8"),
-            Self::I8NullError => write!(f, "{:?}", "i8 value is null"),
-            Self::I16NotActualValueError => write!(f, "{:?}", "could not parse value to i16"),
-            Self::I16NullError => write!(f, "{:?}", "i16 value is null"),
-            Self::I32NotActualValueError => write!(f, "{:?}", "could not parse value to i32"),
-            Self::I32NullError => write!(f, "{:?}", "i32 value is null"),
-            Self::I64NotActualValueError => write!(f, "{:?}", "could not parse value to i64"),
-            Self::I64NullError => write!(f, "{:?}", "i64 value is null"),
-            Self::I128NotActualValueError => write!(f, "{:?}", "could not parse value to i128"),
-            Self::I128NullError => write!(f, "{:?}", "i128 value is null"),
-            Self::F64NotActualValueError => write!(f, "{:?}", "could not parse value to f64"),
-            Self::F64NullError => write!(f, "{:?}", "f64 value is null"),
-            Self::BoolNotActualValueError => write!(f, "{:?}", "could not parse value to bool"),
-            Self::BoolNullError => write!(f, "{:?}", "bool value is null"),
-            Self::StringNotActualValueError => write!(f, "{:?}", "could not parse value to string"),
-            Self::StringNullError => write!(f, "{:?}", "string value is null"),
-            Self::ByteaNotActualValueError => write!(f, "{:?}", "could not parse value to bytea"),
-            Self::ByteaNullError => write!(f, "{:?}", "bytea value is null"),
-            Self::UuidNotActualValueError => write!(f, "{:?}", "could not parse value to uuid"),
-            Self::UuidNullError => write!(f, "{:?}", "uuid value is null"),
-        }
-    }
-}
-
-impl std::error::Error for ParseValueError {}

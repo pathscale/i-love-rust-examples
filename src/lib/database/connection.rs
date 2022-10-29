@@ -1,3 +1,4 @@
+use thiserror::Error;
 use futures::stream::FusedStream;
 use futures::SinkExt;
 use futures::StreamExt;
@@ -42,7 +43,7 @@ impl DbConnection {
         self.pending = true;
         let message = match self.inner.next().await {
             Some(r) => r?,
-            None => return Err("no response".into()),
+            None => return Err(DbConnectionError::WebsocketReadError),
         };
         self.pending = false;
         Ok(message.into_text()?)
@@ -50,7 +51,7 @@ impl DbConnection {
 
     pub async fn open(&mut self) -> Result<(), DbConnectionError> {
         if self.is_open() {
-            return Err("connection already open".into());
+            return Err(DbConnectionError::ConnectionAlreadyOpenError);
         };
         self.inner = connect_async(format!("ws://{}:{}", self.host, self.port))
             .await?
@@ -60,10 +61,10 @@ impl DbConnection {
 
     pub async fn close(&mut self, reason: &str) -> Result<(), DbConnectionError> {
         if !self.is_open() {
-            return Err("connection already closed".into());
+            return Err(DbConnectionError::ConnectionAlreadyClosedError);
         };
         if self.is_pending() {
-            return Err("cannot close connection with pending data".into());
+            return Err(DbConnectionError::PendingDataTransferError);
         };
         self.inner
             .close(Some(CloseFrame {
@@ -75,31 +76,16 @@ impl DbConnection {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum DbConnectionError {
-    WebsocketError(tokio_tungstenite::tungstenite::Error),
-    Message(&'static str),
-}
-
-impl std::fmt::Display for DbConnectionError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::WebsocketError(e) => write!(f, "{:?}", e),
-            Self::Message(error_msg) => write!(f, "{:?}", error_msg),
-        }
-    }
-}
-
-impl std::error::Error for DbConnectionError {}
-
-impl From<tokio_tungstenite::tungstenite::Error> for DbConnectionError {
-    fn from(e: tokio_tungstenite::tungstenite::Error) -> Self {
-        Self::WebsocketError(e)
-    }
-}
-
-impl From<&'static str> for DbConnectionError {
-    fn from(e: &'static str) -> Self {
-        Self::Message(e)
-    }
+		#[error("websocket message failed")]
+    WebsocketError(#[from] tokio_tungstenite::tungstenite::Error),
+		#[error("failed to read websocket message")]
+    WebsocketReadError,
+		#[error("connection already open")]
+		ConnectionAlreadyOpenError,
+		#[error("connection already closed")]
+		ConnectionAlreadyClosedError,
+		#[error("cannot close connection with pending data transfer")]
+		PendingDataTransferError,
 }

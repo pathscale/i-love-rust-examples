@@ -9,6 +9,7 @@ edition = "2021"
 lib = { path = "../lib" }
 model = { path = "../model" }
 eyre = "*"
+thiserror = "1.0.37"
 serde = { version = "*", features = ["derive"] }
 futures = "*"
 itertools = "0.10.3"

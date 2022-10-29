@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use thiserror::Error;
 
 pub fn tokenize_statements(
     statements: &str,
@@ -31,7 +32,7 @@ fn unique_placeholders(statements: &str) -> Result<(usize, Vec<String>), Tokeniz
     for capture in captured_matches {
         let match_bytes = capture
             .get(0)
-            .ok_or("could not recover captured placeholders")?
+            .ok_or(TokenizerError::RegexCaptureError)?
             .as_bytes();
         matches.push(match_bytes);
 
@@ -73,9 +74,7 @@ fn validate_matching_length(
     num_tokens: usize,
 ) -> Result<(), TokenizerError> {
     if num_placeholders != num_tokens {
-        return Err(TokenizerError::from(
-            "mismatched number of unique placeholders and tokens",
-        ));
+        return Err(TokenizerError::DifferentNumberPlaceholdersAndTokensError);
     };
 
     Ok(())
@@ -84,9 +83,7 @@ fn validate_matching_length(
 fn validate_placeholders(placeholders: &Vec<String>) -> Result<(), TokenizerError> {
     for (idx, placeholder) in placeholders.iter().enumerate() {
         if placeholder != &format!("?{}", &idx.to_string()) {
-            return Err(TokenizerError::from(
-                "mismatched placeholder numbers and token vector indexes",
-            ));
+            return Err(TokenizerError::MismatchedPlaceholdersAndTokensError);
         };
     }
 
@@ -118,47 +115,18 @@ fn format_token(token: String) -> Result<String, TokenizerError> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum TokenizerError {
-    RegexError(regex::Error),
-    ConversionError(std::str::Utf8Error),
-    PlaceholderError(std::num::ParseIntError),
-    Message(&'static str),
-}
-
-impl std::fmt::Display for TokenizerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::RegexError(e) => write!(f, "{:?}", e),
-            Self::ConversionError(e) => write!(f, "{:?}", e),
-            Self::PlaceholderError(e) => write!(f, "{:?}", e),
-            Self::Message(error_msg) => write!(f, "{:?}", error_msg),
-        }
-    }
-}
-
-impl std::error::Error for TokenizerError {}
-
-impl From<regex::Error> for TokenizerError {
-    fn from(e: regex::Error) -> Self {
-        Self::RegexError(e)
-    }
-}
-
-impl From<std::str::Utf8Error> for TokenizerError {
-    fn from(e: std::str::Utf8Error) -> Self {
-        Self::ConversionError(e)
-    }
-}
-
-impl From<std::num::ParseIntError> for TokenizerError {
-    fn from(e: std::num::ParseIntError) -> Self {
-        Self::PlaceholderError(e)
-    }
-}
-
-impl From<&'static str> for TokenizerError {
-    fn from(e: &'static str) -> Self {
-        Self::Message(e)
-    }
+    #[error("regex instantiation failed")]
+    RegexInstantiationError(#[from] regex::Error),
+    #[error("regex capture failed")]
+    RegexCaptureError,
+    #[error("different number of placeholders and tokens")]
+    DifferentNumberPlaceholdersAndTokensError,
+    #[error("placeholder numbers don't match token indexes")]
+    MismatchedPlaceholdersAndTokensError,
+    #[error("failed to convert regex match bytes to string")]
+    BytesToStringConversionError(#[from] std::str::Utf8Error),
+    #[error("failed to parse placeholder to int")]
+    PlaceholderParseError(#[from] std::num::ParseIntError),
 }

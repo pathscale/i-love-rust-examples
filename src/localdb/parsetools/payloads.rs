@@ -1,3 +1,5 @@
+use thiserror::Error;
+
 use super::{Payload, SelectPayload};
 
 type Affected = usize;
@@ -165,23 +167,14 @@ impl ParsablePayload for Vec<Payload> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ParsePayloadError {
+    #[error("select payload not found")]
     SelectPayloadNotFoundError,
+    #[error("insert payload not found")]
     InsertPayloadNotFoundError,
+    #[error("update payload not found")]
     UpdatePayloadNotFoundError,
+    #[error("delete payload not found")]
     DeletePayloadNotFoundError,
 }
-
-impl std::fmt::Display for ParsePayloadError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::SelectPayloadNotFoundError => write!(f, "{:?}", "no select payload found"),
-            Self::InsertPayloadNotFoundError => write!(f, "{:?}", "no insert payload found"),
-            Self::UpdatePayloadNotFoundError => write!(f, "{:?}", "no update payload found"),
-            Self::DeletePayloadNotFoundError => write!(f, "{:?}", "no delete payload found"),
-        }
-    }
-}
-
-impl std::error::Error for ParsePayloadError {}

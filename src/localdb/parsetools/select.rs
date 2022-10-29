@@ -1,3 +1,5 @@
+use thiserror::Error;
+
 use super::Row;
 
 #[derive(Debug, Default)]
@@ -24,17 +26,8 @@ impl SelectPayload {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ParseSelectPayloadError {
+    #[error("empty rows")]
     EmptyRows,
 }
-
-impl std::fmt::Display for ParseSelectPayloadError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::EmptyRows => write!(f, "{:?}", "no rows in select payload"),
-        }
-    }
-}
-
-impl std::error::Error for ParseSelectPayloadError {}

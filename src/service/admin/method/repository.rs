@@ -1,5 +1,6 @@
-use lib::database::LocalDbClient;
+use thiserror::Error;
 
+use lib::database::LocalDbClient;
 use localdb::parsetools::*;
 
 use gen::database::*;
@@ -28,7 +29,7 @@ pub async fn fun_admin_list_users(
         let role: EnumRole = row[4]
             .try_string()?
             .parse()
-            .map_err(|_| RepositoryError::ParseEnumError("could not parse role string to enum"))?;
+            .map_err(|_| RepositoryError::ParseEnumRoleError)?;
 
         rows.push(FunAdminListUsersRespRow {
             user_id: row[0].try_i64()?,
@@ -63,11 +64,11 @@ pub async fn fun_admin_assign_role(
         .try_first_value()?
         .try_string()?
         .parse()
-        .map_err(|_| RepositoryError::ParseEnumError("could not parse role string to enum"))?;
+        .map_err(|_| RepositoryError::ParseEnumRoleError)?;
 
     match operator_role {
         EnumRole::Admin => (),
-        _ => return Err(RepositoryError::InvalidRoleError("invalid role")),
+        _ => return Err(RepositoryError::InvalidRoleForAssignRoleError),
     };
 
     let affected_rows = db
@@ -82,7 +83,7 @@ pub async fn fun_admin_assign_role(
         .try_next_update()?;
 
     if affected_rows == 0 {
-        return Err(RepositoryError::DiagnosticError("user role not updated"));
+        return Err(RepositoryError::NoRowsAffectedDiagnosticError);
     };
 
     Ok(FunAdminAssignRoleResp {
@@ -90,61 +91,22 @@ pub async fn fun_admin_assign_role(
     })
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum RepositoryError {
-    InvalidRoleError(&'static str),
-    DiagnosticError(&'static str),
-    LocalDbClientError(lib::database::LocalDbClientError),
-    ParseEnumError(&'static str),
-    ParsePayloadError(ParsePayloadError),
-    ParseSelectPayloadError(ParseSelectPayloadError),
-    ParseRowError(ParseRowError),
-    ParseValueError(ParseValueError),
-}
-
-impl std::fmt::Display for RepositoryError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::InvalidRoleError(e) => write!(f, "{:?}", e),
-            Self::DiagnosticError(e) => write!(f, "{:?}", e),
-            Self::LocalDbClientError(e) => write!(f, "{:?}", e),
-            Self::ParseEnumError(e) => write!(f, "{:?}", e),
-            Self::ParsePayloadError(e) => write!(f, "{:?}", e),
-            Self::ParseSelectPayloadError(e) => write!(f, "{:?}", e),
-            Self::ParseRowError(e) => write!(f, "{:?}", e),
-            Self::ParseValueError(e) => write!(f, "{:?}", e),
-        }
-    }
-}
-
-impl std::error::Error for RepositoryError {}
-
-impl From<lib::database::LocalDbClientError> for RepositoryError {
-    fn from(e: lib::database::LocalDbClientError) -> Self {
-        Self::LocalDbClientError(e)
-    }
-}
-
-impl From<ParsePayloadError> for RepositoryError {
-    fn from(e: ParsePayloadError) -> Self {
-        Self::ParsePayloadError(e)
-    }
-}
-
-impl From<ParseSelectPayloadError> for RepositoryError {
-    fn from(e: ParseSelectPayloadError) -> Self {
-        Self::ParseSelectPayloadError(e)
-    }
-}
-
-impl From<ParseRowError> for RepositoryError {
-    fn from(e: ParseRowError) -> Self {
-        Self::ParseRowError(e)
-    }
-}
-
-impl From<ParseValueError> for RepositoryError {
-    fn from(e: ParseValueError) -> Self {
-        Self::ParseValueError(e)
-    }
+    #[error("invalid role for assign role")]
+    InvalidRoleForAssignRoleError,
+    #[error("diagnostic: no rows affected")]
+    NoRowsAffectedDiagnosticError,
+    #[error("localdb client failed")]
+    LocalDbClientError(#[from] lib::database::LocalDbClientError),
+    #[error("failed to parse role string to enum")]
+    ParseEnumRoleError,
+    #[error("failed to parse payload")]
+    ParsePayloadError(#[from] ParsePayloadError),
+    #[error("failed to parse select payload")]
+    ParseSelectPayloadError(#[from] ParseSelectPayloadError),
+    #[error("failed to parse row")]
+    ParseRowError(#[from] ParseRowError),
+    #[error("failed to parse value")]
+    ParseValueError(#[from] ParseValueError),
 }

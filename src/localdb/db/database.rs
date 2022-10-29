@@ -1,6 +1,6 @@
 use gluesql::core::executor::Payload;
-use gluesql::core::result;
 use gluesql::prelude::{Glue, SledStorage};
+use thiserror::Error;
 
 pub struct Database {
     inner: Glue<SledStorage>,
@@ -8,8 +8,8 @@ pub struct Database {
 
 impl Database {
     pub fn new(storage_path: &str) -> Result<Self, DatabaseError> {
-        let storage = SledStorage::new(storage_path)
-            .or_else(|_| Err(DatabaseError::from("could not instantiate database")))?;
+        let storage =
+            SledStorage::new(storage_path).or_else(|_| Err(DatabaseError::InstantiationError))?;
         let mut db = Self {
             inner: Glue::new(storage),
         };
@@ -48,31 +48,10 @@ impl Default for Database {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum DatabaseError {
-    ExecError(result::Error),
-    Message(&'static str),
-}
-
-impl std::fmt::Display for DatabaseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ExecError(e) => write!(f, "{:?}", e),
-            Self::Message(error_msg) => write!(f, "{:?}", error_msg),
-        }
-    }
-}
-
-impl std::error::Error for DatabaseError {}
-
-impl From<result::Error> for DatabaseError {
-    fn from(e: result::Error) -> Self {
-        Self::ExecError(e)
-    }
-}
-
-impl From<&'static str> for DatabaseError {
-    fn from(e: &'static str) -> Self {
-        Self::Message(e)
-    }
+    #[error("query execution failed")]
+    ExecError(#[from] gluesql::core::result::Error),
+    #[error("database instantiation failed")]
+    InstantiationError,
 }

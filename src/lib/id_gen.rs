@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use thiserror::Error;
 
 /*
 
@@ -59,31 +60,18 @@ impl ConcurrentSnowflake {
         Ok(self
             .inner
             .lock()
-            .map_err(|_| {
-                ConcurrentSnowflakeError::PoisonError(
-                    "lock was poisoned during a previous access and can no longer be locked",
-                )
-            })?
+            .map_err(|_| ConcurrentSnowflakeError::PoisonError)?
             .gen())
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ConcurrentSnowflakeError {
-    PoisonError(&'static str),
-    SnowflakeError(SnowflakeError),
+    #[error("lock was poisoned during a previous access and can no longer be locked")]
+    PoisonError,
+    #[error("snowflake failed")]
+    SnowflakeError(#[from] SnowflakeError),
 }
-
-impl std::fmt::Display for ConcurrentSnowflakeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::PoisonError(e) => write!(f, "{:?}", e),
-            Self::SnowflakeError(e) => write!(f, "{:?}", e),
-        }
-    }
-}
-
-impl std::error::Error for ConcurrentSnowflakeError {}
 
 #[derive(Debug)]
 pub struct Snowflake {
@@ -100,9 +88,7 @@ impl Snowflake {
 
     pub fn with_epoch(service_id: u16, epoch: SystemTime) -> Result<Self, SnowflakeError> {
         if service_id > MAX_2_BITS {
-            return Err(SnowflakeError::InvalidServiceIdError(
-                "service id must fit in 2 bits",
-            ));
+            return Err(SnowflakeError::InvalidServiceIdError);
         }
         Ok(Self {
             epoch,
@@ -136,20 +122,11 @@ impl Snowflake {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum SnowflakeError {
-    InvalidServiceIdError(&'static str),
+    #[error("service id must fit in 2 bits")]
+    InvalidServiceIdError,
 }
-
-impl std::fmt::Display for SnowflakeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::InvalidServiceIdError(e) => write!(f, "{:?}", e),
-        }
-    }
-}
-
-impl std::error::Error for SnowflakeError {}
 
 #[cfg(test)]
 mod tests {

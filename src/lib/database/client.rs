@@ -1,5 +1,6 @@
 use deadpool::managed;
 use eyre::*;
+use thiserror::Error;
 use gluesql::core::executor::Payload;
 use serde::Deserialize;
 use serde::Serialize;
@@ -92,49 +93,12 @@ where
 		}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum LocalDbClientError {
-    DeserializationError(serde_json::Error),
-    PoolError(deadpool::managed::PoolError<DbConnectionError>),
-    BuildError(deadpool::managed::BuildError<ErrReport>),
-    DbConnectionError(DbConnectionError),
-    Message(&'static str),
-}
-
-impl std::fmt::Display for LocalDbClientError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::DeserializationError(e) => write!(f, "{:?}", e),
-            Self::PoolError(e) => write!(f, "{:?}", e),
-            Self::BuildError(e) => write!(f, "{:?}", e),
-            Self::DbConnectionError(e) => write!(f, "{:?}", e),
-            Self::Message(error_msg) => write!(f, "{:?}", error_msg),
-        }
-    }
-}
-
-impl std::error::Error for LocalDbClientError {}
-
-impl From<serde_json::Error> for LocalDbClientError {
-    fn from(e: serde_json::Error) -> Self {
-        Self::DeserializationError(e)
-    }
-}
-
-impl From<deadpool::managed::PoolError<DbConnectionError>> for LocalDbClientError {
-    fn from(e: deadpool::managed::PoolError<DbConnectionError>) -> Self {
-        Self::PoolError(e)
-    }
-}
-
-impl From<DbConnectionError> for LocalDbClientError {
-    fn from(e: DbConnectionError) -> Self {
-        Self::DbConnectionError(e)
-    }
-}
-
-impl From<&'static str> for LocalDbClientError {
-    fn from(e: &'static str) -> Self {
-        Self::Message(e)
-    }
+		#[error("deserialization failed")]
+    DeserializationError(#[from] serde_json::Error),
+		#[error("connection pool failed")]
+    PoolError(#[from] deadpool::managed::PoolError<DbConnectionError>),
+		#[error("db connection failed")]
+    DbConnectionError(#[from] DbConnectionError),
 }

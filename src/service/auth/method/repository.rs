@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use thiserror::Error;
 
 use lib::database::LocalDbClientError;
 use lib::id_gen::{ConcurrentSnowflake, ConcurrentSnowflakeError};
@@ -93,7 +94,7 @@ pub async fn fun_auth_get_password_salt(
         .await?
         .try_next_select()?
         .maybe_first_row()
-        .ok_or_else(|| RepositoryError::UnknownUserError("cannot get salt of unknown user"))?
+        .ok_or_else(|| RepositoryError::UnknownUserGetSaltError)?
         .try_first_value()?
         .try_bytea()?;
 
@@ -120,7 +121,7 @@ pub async fn fun_auth_authenticate(
         .await?
         .try_next_select()?
         .maybe_first_row()
-        .ok_or_else(|| RepositoryError::UnknownUserError("cannot login unknown user"))?;
+        .ok_or_else(|| RepositoryError::UnknownUserLoginError)?;
 
     let pkey_id = user_auth_row[0].try_i64()?;
     let public_id = user_auth_row[1].try_i64()?;
@@ -128,7 +129,7 @@ pub async fn fun_auth_authenticate(
     let role: EnumRole = user_auth_row[3]
         .try_string()?
         .parse()
-        .map_err(|_| RepositoryError::ParseEnumError("could not parse role string to enum"))?;
+        .map_err(|_| RepositoryError::ParseEnumRoleError)?;
     let blocked = user_auth_row[4].try_bool()?;
 
     // checking password ok and registering login attempt
@@ -164,40 +165,29 @@ pub async fn fun_auth_authenticate(
     )
     .await?;
     if !password_ok {
-        return Err(RepositoryError::InvalidPasswordError("invalid password"));
+        return Err(RepositoryError::InvalidPasswordError);
     }
 
     // checking block status
     if blocked {
-        return Err(RepositoryError::BlockedUserError(
-            "cannot login blocked user",
-        ));
+        return Err(RepositoryError::BlockedUserLoginError);
     }
 
     // checking authorization
-    let service = EnumService::try_from(req.service_code).map_err(|()| {
-        RepositoryError::ConvertEnumError("could not convert service number to enum")
-    })?;
+    let service = EnumService::try_from(req.service_code)
+        .map_err(|()| RepositoryError::ParseEnumServiceError)?;
 
     match service {
         EnumService::Admin => match role {
             EnumRole::Developer => (),
             EnumRole::Admin => (),
-            _ => {
-                return Err(RepositoryError::InvalidRoleError(
-                    "role not authorized for admin service",
-                ))
-            }
+            _ => return Err(RepositoryError::InvalidRoleForAdminError),
         },
         EnumService::User => match role {
             EnumRole::Developer => (),
             EnumRole::Admin => (),
             EnumRole::User => (),
-            _ => {
-                return Err(RepositoryError::InvalidRoleError(
-                    "role not authorized for user service",
-                ))
-            }
+            _ => return Err(RepositoryError::InvalidRoleForUserError),
         },
         _ => (),
     }
@@ -252,12 +242,8 @@ pub async fn fun_auth_set_token(
     // checking known user and row count
     match user_auth_payload.rows.len() {
         1 => (),
-        0 => {
-            return Err(RepositoryError::UnknownUserError(
-                "cannot login unknown user",
-            ))
-        }
-        _ => return Err(RepositoryError::DiagnosticError("invalid row count")),
+        0 => return Err(RepositoryError::UnknownUserSetTokenError),
+        _ => return Err(RepositoryError::RowCountDiagnosticError),
     };
 
     // checking block status
@@ -267,24 +253,17 @@ pub async fn fun_auth_set_token(
         .try_bool()?;
 
     if blocked {
-        return Err(RepositoryError::BlockedUserError(
-            "cannot set token for blocked user",
-        ));
+        return Err(RepositoryError::BlockedUserSetTokenError);
     }
 
     // checking if service is permitted
-    let service = EnumService::try_from(req.service_code).map_err(|()| {
-        RepositoryError::ConvertEnumError("could not convert service number to enum")
-    })?;
+    let service = EnumService::try_from(req.service_code)
+        .map_err(|()| RepositoryError::ParseEnumServiceError)?;
 
     let token = match service {
         EnumService::Admin => req.admin_token,
         EnumService::User => req.user_token,
-        _ => {
-            return Err(RepositoryError::InvalidServiceError(
-                "invalid service for set token",
-            ))
-        }
+        _ => return Err(RepositoryError::InvalidServiceForSetTokenError),
     };
 
     // updating token
@@ -342,17 +321,13 @@ pub async fn fun_auth_authorize(
     let role: EnumRole = user_auth_payload.rows[0][3]
         .try_string()?
         .parse()
-        .map_err(|_| RepositoryError::ParseEnumError("could not parse role string to enum"))?;
+        .map_err(|_| RepositoryError::ParseEnumRoleError)?;
 
     // checking if service is permitted and token ok
     let (service, token_ok) = match req.service {
         EnumService::Admin => (req.service.to_string(), req.token == admin_token),
         EnumService::User => (req.service.to_string(), req.token == user_token),
-        _ => {
-            return Err(RepositoryError::InvalidServiceError(
-                "invalid service for authorize",
-            ))
-        }
+        _ => return Err(RepositoryError::InvalidServiceForAuthorizeError),
     };
 
     // logging authorization attempt
@@ -382,18 +357,14 @@ pub async fn fun_auth_authorize(
     .await?;
 
     if !token_ok {
-        return Err(RepositoryError::InvalidTokenError("invalid token"));
+        return Err(RepositoryError::InvalidTokenError);
     }
 
     // checking known user and row count
     match user_auth_payload.rows.len() {
         1 => (),
-        0 => {
-            return Err(RepositoryError::UnknownUserError(
-                "cannot authorize unknown user",
-            ))
-        }
-        _ => return Err(RepositoryError::DiagnosticError("invalid row count")),
+        0 => return Err(RepositoryError::UnknownUserAuthorizeError),
+        _ => return Err(RepositoryError::RowCountDiagnosticError),
     };
 
     // updating device info
@@ -442,7 +413,7 @@ pub async fn _fun_auth_change_password(
         .await?
         .try_next_select()?
         .maybe_first_row()
-        .ok_or_else(|| RepositoryError::UnknownUserError("cannot login unknown user"))?;
+        .ok_or_else(|| RepositoryError::_UnknownUserChangePasswordError)?;
 
     let pkey_id = user_auth_row[0].try_i64()?;
     let hash = user_auth_row[1].try_bytea()?;
@@ -487,14 +458,12 @@ pub async fn _fun_auth_change_password(
     )
     .await?;
     if !password_ok {
-        return Err(RepositoryError::InvalidPasswordError("invalid password"));
+        return Err(RepositoryError::InvalidPasswordError);
     }
 
     // checking block status
     if blocked {
-        return Err(RepositoryError::BlockedUserError(
-            "cannot login blocked user",
-        ));
+        return Err(RepositoryError::_BlockedUserChangePasswordError);
     }
 
     // updating user info
@@ -535,12 +504,10 @@ pub async fn _fun_get_recovery_question_data(
     for row in recovery_question_payload.rows {
         let id: i64 = row[0].try_i64()?;
         let content: String = row[1].try_string()?;
-        let category: EnumRecoveryQuestionCategory =
-            row[2].try_string()?.parse().map_err(|_| {
-                RepositoryError::ParseEnumError(
-                    "could not parse recovery question category string to enum",
-                )
-            })?;
+        let category: EnumRecoveryQuestionCategory = row[2]
+            .try_string()?
+            .parse()
+            .map_err(|_| RepositoryError::_ParseEnumRecoveryQuestionCategoryError)?;
         rows.push(FunGetRecoveryQuestionDataRespRow {
             question_id: id,
             content: content,
@@ -575,9 +542,7 @@ pub async fn _fun_auth_set_recovery_questions(
     // checking user had recovery questions
     if affected_rows == 0 {
         db.query("ROLLBACK;", &[]).await?;
-        return Err(RepositoryError::DiagnosticError(
-            "no rows affected from delete recovery questions",
-        ));
+        return Err(RepositoryError::_NoRowsAffectedDiagnosticError);
     }
 
     let mut statements: String = String::new();
@@ -611,9 +576,8 @@ pub async fn _fun_auth_set_recovery_questions(
 
     // inserting tokens in query
     let tokenized_statement =
-        localdb::db::statements::tokenizer::tokenize_statements(&statements, tokens).map_err(
-            |_| RepositoryError::Message("could not tokenize set recovery questions statement"),
-        )?;
+        localdb::db::statements::tokenizer::tokenize_statements(&statements, tokens)
+            .map_err(|_| RepositoryError::_TokenzationError)?;
 
     // executing query
     let payloads = db.query(&tokenized_statement, &[]).await;
@@ -653,7 +617,7 @@ pub async fn _fun_auth_basic_authenticate(
         .await?
         .try_next_select()?
         .maybe_first_row()
-        .ok_or_else(|| RepositoryError::UnknownUserError("cannot login unknown user"))?;
+        .ok_or_else(|| RepositoryError::UnknownUserLoginError)?;
 
     // registering login attempt
     let pkey_id = user_auth_row[0].try_i64()?;
@@ -697,9 +661,7 @@ pub async fn _fun_auth_basic_authenticate(
     // checking block status
     let blocked = user_auth_row[1].try_bool()?;
     if blocked {
-        return Err(RepositoryError::BlockedUserError(
-            "cannot login blocked user",
-        ));
+        return Err(RepositoryError::BlockedUserLoginError);
     }
 
     Ok(FunAuthBasicAuthenticateResp {
@@ -759,9 +721,7 @@ pub async fn _fun_submit_recovery_answers(
 
     // checking number of answers provided
     if answers_payload.rows.len() != req.question_ids.len() {
-        return Err(RepositoryError::_MustSubmitAllRecoveryQuestionsError(
-            "must submit all recovery questions",
-        ));
+        return Err(RepositoryError::_MustSubmitAllRecoveryQuestionsError);
     };
 
     // checking correct answers
@@ -771,14 +731,10 @@ pub async fn _fun_submit_recovery_answers(
             .question_ids
             .iter()
             .position(|&q| (q as i64) == question_id)
-            .ok_or(RepositoryError::_MustSubmitAllRecoveryQuestionsError(
-                "must submit all recovery questions",
-            ))?;
+            .ok_or(RepositoryError::_MustSubmitAllRecoveryQuestionsError)?;
 
         if req.answers[idx] != row[1].try_string()? {
-            return Err(RepositoryError::_WrongRecoveryAnswersError(
-                "wrong recovery answer",
-            ));
+            return Err(RepositoryError::_WrongRecoveryAnswersError);
         };
     }
 
@@ -834,9 +790,7 @@ pub async fn _fun_auth_reset_password(
     // checking only one reset token exists
     if affected_rows != 1 {
         db.query("ROLLBACK;", &[]).await?;
-        return Err(RepositoryError::_InvalidRecoveryTokenError(
-            "invalid recovery token",
-        ));
+        return Err(RepositoryError::_InvalidRecoveryTokenError);
     }
 
     // closing transaction
@@ -855,111 +809,66 @@ fn unix_timestamp() -> i64 {
         .as_secs() as i64
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum RepositoryError {
-    UnknownUserError(&'static str),
-    BlockedUserError(&'static str),
-    InvalidRoleError(&'static str),
-    InvalidPasswordError(&'static str),
-    InvalidTokenError(&'static str),
-    InvalidServiceError(&'static str),
-    _MustSubmitAllRecoveryQuestionsError(&'static str),
-    _WrongRecoveryAnswersError(&'static str),
-    _InvalidRecoveryTokenError(&'static str),
-    DiagnosticError(&'static str),
-    LocalDbClientError(LocalDbClientError),
-    ConcurrentSnowflakeError(ConcurrentSnowflakeError),
-    ParseEnumError(&'static str),
-    ConvertEnumError(&'static str),
-    ParsePayloadError(ParsePayloadError),
-    ParseSelectPayloadError(ParseSelectPayloadError),
-    ParseRowError(ParseRowError),
-    ParseValueError(ParseValueError),
-    ParseUuidError(uuid::Error),
-    Report(eyre::ErrReport),
-    Message(&'static str),
-}
-
-impl std::fmt::Display for RepositoryError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::UnknownUserError(e) => write!(f, "{:?}", e),
-            Self::BlockedUserError(e) => write!(f, "{:?}", e),
-            Self::InvalidRoleError(e) => write!(f, "{:?}", e),
-            Self::InvalidPasswordError(e) => write!(f, "{:?}", e),
-            Self::InvalidTokenError(e) => write!(f, "{:?}", e),
-            Self::InvalidServiceError(e) => write!(f, "{:?}", e),
-            Self::_MustSubmitAllRecoveryQuestionsError(e) => write!(f, "{:?}", e),
-            Self::_WrongRecoveryAnswersError(e) => write!(f, "{:?}", e),
-            Self::_InvalidRecoveryTokenError(e) => write!(f, "{:?}", e),
-            Self::DiagnosticError(e) => write!(f, "{:?}", e),
-            Self::LocalDbClientError(e) => write!(f, "{:?}", e),
-            Self::ConcurrentSnowflakeError(e) => write!(f, "{:?}", e),
-            Self::ParseEnumError(e) => write!(f, "{:?}", e),
-            Self::ConvertEnumError(e) => write!(f, "{:?}", e),
-            Self::ParsePayloadError(e) => write!(f, "{:?}", e),
-            Self::ParseSelectPayloadError(e) => write!(f, "{:?}", e),
-            Self::ParseRowError(e) => write!(f, "{:?}", e),
-            Self::ParseValueError(e) => write!(f, "{:?}", e),
-            Self::ParseUuidError(e) => write!(f, "{:?}", e),
-            Self::Report(e) => write!(f, "{:?}", e),
-            Self::Message(error_msg) => write!(f, "{:?}", error_msg),
-        }
-    }
-}
-
-impl std::error::Error for RepositoryError {}
-
-impl From<LocalDbClientError> for RepositoryError {
-    fn from(e: LocalDbClientError) -> Self {
-        Self::LocalDbClientError(e)
-    }
-}
-
-impl From<ConcurrentSnowflakeError> for RepositoryError {
-    fn from(e: ConcurrentSnowflakeError) -> Self {
-        Self::ConcurrentSnowflakeError(e)
-    }
-}
-
-impl From<ParsePayloadError> for RepositoryError {
-    fn from(e: ParsePayloadError) -> Self {
-        Self::ParsePayloadError(e)
-    }
-}
-
-impl From<ParseSelectPayloadError> for RepositoryError {
-    fn from(e: ParseSelectPayloadError) -> Self {
-        Self::ParseSelectPayloadError(e)
-    }
-}
-
-impl From<ParseRowError> for RepositoryError {
-    fn from(e: ParseRowError) -> Self {
-        Self::ParseRowError(e)
-    }
-}
-
-impl From<ParseValueError> for RepositoryError {
-    fn from(e: ParseValueError) -> Self {
-        Self::ParseValueError(e)
-    }
-}
-
-impl From<uuid::Error> for RepositoryError {
-    fn from(e: uuid::Error) -> Self {
-        Self::ParseUuidError(e)
-    }
-}
-
-impl From<eyre::ErrReport> for RepositoryError {
-    fn from(e: eyre::ErrReport) -> Self {
-        Self::Report(e)
-    }
-}
-
-impl From<&'static str> for RepositoryError {
-    fn from(e: &'static str) -> Self {
-        Self::Message(e)
-    }
+    #[error("cannot login unknown user")]
+    UnknownUserLoginError,
+    #[error("cannot authorize unknown user")]
+    UnknownUserAuthorizeError,
+    #[error("cannot set token of unknown user")]
+    UnknownUserSetTokenError,
+    #[error("cannot get salt of unknown user")]
+    UnknownUserGetSaltError,
+    #[error("cannot change password of unknown user")]
+    _UnknownUserChangePasswordError,
+    #[error("cannot login blocked user")]
+    BlockedUserLoginError,
+    #[error("cannot set token of blocked user")]
+    BlockedUserSetTokenError,
+    #[error("cannot change password of blocked user")]
+    _BlockedUserChangePasswordError,
+    #[error("invalid role for admin service")]
+    InvalidRoleForAdminError,
+    #[error("invalid role for user service")]
+    InvalidRoleForUserError,
+    #[error("invalid password")]
+    InvalidPasswordError,
+    #[error("invalid token")]
+    InvalidTokenError,
+    #[error("invalid service for set token")]
+    InvalidServiceForSetTokenError,
+    #[error("invalid service for authorize")]
+    InvalidServiceForAuthorizeError,
+    #[error("missing recovery questions")]
+    _MustSubmitAllRecoveryQuestionsError,
+    #[error("incorrect recovery answers")]
+    _WrongRecoveryAnswersError,
+    #[error("invalid recovery token")]
+    _InvalidRecoveryTokenError,
+    #[error("diagnostic: invalid row count")]
+    RowCountDiagnosticError,
+    #[error("diagnostic: no rows affected")]
+    _NoRowsAffectedDiagnosticError,
+    #[error("localdb client failed")]
+    LocalDbClientError(#[from] LocalDbClientError),
+    #[error("concurrent snowflake failed")]
+    ConcurrentSnowflakeError(#[from] ConcurrentSnowflakeError),
+    #[error("failed to parse role string to enum")]
+    ParseEnumRoleError,
+    #[error("failed to parse recovery question category string to enum")]
+    _ParseEnumRecoveryQuestionCategoryError,
+    #[error("failed to parse service number to enum")]
+    ParseEnumServiceError,
+    #[error("failed to parse payload")]
+    ParsePayloadError(#[from] ParsePayloadError),
+    #[error("failed to parse select payload")]
+    ParseSelectPayloadError(#[from] ParseSelectPayloadError),
+    #[error("failed to parse row")]
+    ParseRowError(#[from] ParseRowError),
+    #[error("failed to parse value")]
+    ParseValueError(#[from] ParseValueError),
+    #[error("failed to parse uuid")]
+    ParseUuidError(#[from] uuid::Error),
+    #[error("failed to tokenize statements")]
+    _TokenzationError,
 }

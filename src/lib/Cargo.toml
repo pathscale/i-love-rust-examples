@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "*", features = ["derive", "env"] }
 eyre = "*"
+thiserror = "1.0.37"
 serde = { version = "*", features = ["derive"] }
 regex = "*"
 libc = "*"

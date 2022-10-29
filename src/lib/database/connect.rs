@@ -1,3 +1,4 @@
+use thiserror::Error;
 use deadpool::managed::{Pool, PoolConfig, Timeouts};
 use deadpool::Runtime;
 use tracing::*;
@@ -20,31 +21,8 @@ pub async fn connect_to_database(config: DbConfig) -> Result<LocalDbClient, Conn
     Ok(LocalDbClient::new(pool))
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ConnectError {
-    BuildError(deadpool::managed::BuildError<DbConnectionError>),
-    Message(&'static str),
-}
-
-impl std::fmt::Display for ConnectError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::BuildError(e) => write!(f, "{:?}", e),
-            Self::Message(error_msg) => write!(f, "{:?}", error_msg),
-        }
-    }
-}
-
-impl std::error::Error for ConnectError {}
-
-impl From<deadpool::managed::BuildError<DbConnectionError>> for ConnectError {
-    fn from(e: deadpool::managed::BuildError<DbConnectionError>) -> Self {
-        Self::BuildError(e)
-    }
-}
-
-impl From<&'static str> for ConnectError {
-    fn from(e: &'static str) -> Self {
-        Self::Message(e)
-    }
+		#[error("connection pool builder failed")]
+    BuildError(#[from] deadpool::managed::BuildError<DbConnectionError>),
 }
