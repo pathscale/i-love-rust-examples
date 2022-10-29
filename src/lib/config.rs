@@ -2,7 +2,9 @@ use crate::log::LogLevel;
 use clap::Parser;
 use eyre::*;
 use serde::*;
+use std::collections::HashMap;
 use std::env::current_dir;
+use std::fmt::Debug;
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -26,16 +28,12 @@ struct CliArgument {
     #[clap(long, env = "PORT")]
     /// The port to listen on
     port: Option<u16>,
-    #[clap(long, env = "PUB_CERT")]
-    pub_cert: Option<String>,
+    #[clap(long, env = "DEBUG")]
+    debug: bool,
+    #[clap(long, env = "PUB_CERTS", value_delimiter = ',')]
+    pub_certs: Option<Vec<String>>,
     #[clap(long, env = "PRIV_CERT")]
     priv_cert: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Config {
-    pub db: DbConfig,
-    pub app: AppConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,81 +42,68 @@ pub struct DbConfig {
     pub port: u32,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Config {
+    pub db: DbConfig,
+    #[serde(skip)]
+    pub app: AppConfig,
+    #[serde(flatten)]
+    pub apps: HashMap<String, AppConfig>,
+}
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AppConfig {
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub log_level: LogLevel,
+    #[serde(default)]
     pub host: String,
+    #[serde(default)]
     pub port: u16,
-    pub pub_cert: String,
-    pub priv_cert: String,
+    #[serde(default)]
+    pub pub_certs: Option<Vec<String>>,
+    #[serde(default)]
+    pub priv_cert: Option<String>,
+    #[serde(default)]
+    pub debug: bool,
+    #[serde(skip)]
+    pub header_only: bool,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct AppFileConfig {
-    pub log_level: LogLevel,
-    pub host: String,
-    pub port: u16,
-    pub pub_cert: String,
-    pub priv_cert: String,
-}
-
 pub fn load_config(service_name: String) -> Result<Config> {
     let args: CliArgument = CliArgument::parse();
 
     println!("Working directory {}", current_dir()?.display());
     println!("Loading config from {}", args.config.display());
-
     let config = std::fs::read_to_string(&args.config)?;
-    let root: serde_json::Value = serde_json::from_str(&config)?;
 
-    let db: DbConfig = serde_json::from_value(
-        root.get("db")
-            .ok_or(ConfigError::DefaultDbConfigNotFoundError(format!(
-                "'db' field not found in config file {}",
-                args.config.display()
-            )))?
-            .to_owned(),
-    )?;
-    let app_file: AppFileConfig = serde_json::from_value(
-        root.get("app")
-            .ok_or(ConfigError::DefaultAppConfigNotFoundError(format!(
-                "'app' field not found in config file {}",
-                args.config.display()
-            )))?
-            .get(&service_name)
-            .ok_or(ConfigError::DefaultAppConfigNotFoundError(format!(
-                "'{}' service field not found in 'app'",
-                service_name
-            )))?
-            .to_owned(),
-    )?;
+    let mut config: Config = serde_json::from_str(&config)?;
 
-    let mut app: AppConfig = AppConfig::default();
-    app.log_level = args.log_level.unwrap_or(app_file.log_level);
-    app.port = args.port.unwrap_or(app_file.port);
-    app.host = args.host.unwrap_or(app_file.host);
-    app.pub_cert = args.pub_cert.unwrap_or(app_file.pub_cert);
-    app.priv_cert = args.priv_cert.unwrap_or(app_file.priv_cert);
-    app.name = service_name;
-    println!("App config {:#?}", app);
+    println!("CONFIG: {:?}", config);
 
-    Ok(Config { db: db, app: app })
-}
-
-#[derive(Debug)]
-pub enum ConfigError {
-    DefaultDbConfigNotFoundError(String),
-    DefaultAppConfigNotFoundError(String),
-}
-
-impl std::fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::DefaultDbConfigNotFoundError(e) => write!(f, "{:?}", e),
-            Self::DefaultAppConfigNotFoundError(e) => write!(f, "{:?}", e),
-        }
+    if let Some(a) = config.apps.get(&service_name) {
+        config.app = serde_json::from_value(serde_json::to_value(a)?)?;
     }
-}
 
-impl std::error::Error for ConfigError {}
+    // merge configs
+    if let Some(log_level) = args.log_level {
+        config.app.log_level = log_level;
+    }
+    if let Some(host) = args.host {
+        config.app.host = host;
+    }
+    if let Some(port) = args.port {
+        config.app.port = port;
+    }
+    config.app.name = service_name;
+    if let Some(pub_certs) = args.pub_certs {
+        config.app.pub_certs = Some(pub_certs);
+    }
+    if let Some(priv_cert) = args.priv_cert {
+        config.app.priv_cert = Some(priv_cert);
+    }
+    if args.debug {
+        config.app.debug = true;
+    }
+    println!("App config {:#?}", config.app);
+    Ok(config)
+}

@@ -3,34 +3,40 @@
 		"host": "localhost",
 		"port": 8888
 	},
-	"app": {
-		"localdb": {
-			"host": "localhost",
-			"port": 8888,
-			"log_level": "Info",
-			"pub_cert": "",
-			"priv_cert": ""
-		},
-		"auth": {
-			"host": "localhost",
-			"port": 8889,
-			"log_level": "Info",
-			"pub_cert": "",
-			"priv_cert": ""
-		},
-		"user": {
-			"host": "localhost",
-			"port": 8890,
-			"log_level": "Info",
-			"pub_cert": "",
-			"priv_cert": ""
-		},
-		"admin": {
-			"host": "localhost",
-			"port": 8891,
-			"log_level": "Info",
-			"pub_cert": "",
-			"priv_cert": ""
-		}
+	"localdb": {
+		"name": "",
+		"host": "localhost",
+		"port": 8888,
+		"log_level": "Info",
+		"pub_certs": [],
+		"priv_cert": "",
+		"debug": true
+	},
+	"auth": {
+		"name": "",
+		"host": "localhost",
+		"port": 8889,
+		"log_level": "Info",
+		"pub_certs": [],
+		"priv_cert": "",
+		"debug": true
+	},
+	"user": {
+		"name": "",
+		"host": "localhost",
+		"port": 8890,
+		"log_level": "Info",
+		"pub_certs": [],
+		"priv_cert": "",
+		"debug": true
+	},
+	"admin": {
+		"name": "",
+		"host": "localhost",
+		"port": 8891,
+		"log_level": "Info",
+		"pub_certs": [],
+		"priv_cert": "",
+		"debug": true
 	}
 }
