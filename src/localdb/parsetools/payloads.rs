@@ -2,7 +2,7 @@ use super::{Payload, SelectPayload};
 
 type Affected = usize;
 
-pub trait PayloadParser {
+pub trait ParsablePayload {
     fn maybe_next_select(&mut self) -> Option<SelectPayload>;
     fn try_next_select(&mut self) -> Result<SelectPayload, ParsePayloadError>;
     fn maybe_next_insert(&mut self) -> Option<Affected>;
@@ -13,7 +13,7 @@ pub trait PayloadParser {
     fn try_next_delete(&mut self) -> Result<Affected, ParsePayloadError>;
 }
 
-impl PayloadParser for Vec<Payload> {
+impl ParsablePayload for Vec<Payload> {
     fn maybe_next_select(&mut self) -> Option<SelectPayload> {
         let mut select: Option<SelectPayload> = None;
         for (idx, payload) in self.iter().enumerate() {

@@ -1,11 +1,11 @@
 use super::{Row, Value};
 
-pub trait RowParser {
+pub trait ParsableRow {
     fn maybe_first_value(&mut self) -> Option<Value>;
     fn try_first_value(&mut self) -> Result<Value, ParseRowError>;
 }
 
-impl RowParser for Row {
+impl ParsableRow for Row {
     fn maybe_first_value(&mut self) -> Option<Value> {
         if self.is_empty() {
             None

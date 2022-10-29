@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use super::Value;
 
-pub trait ValueParser {
+pub trait ParsableValue {
     fn try_i8(&self) -> Result<i8, ParseValueError>;
     fn possible_i8(&self) -> Result<Option<i8>, ParseValueError>;
     fn try_i16(&self) -> Result<i16, ParseValueError>;
@@ -25,7 +25,7 @@ pub trait ValueParser {
     fn possible_uuid(&self) -> Result<Option<Uuid>, ParseValueError>;
 }
 
-impl ValueParser for Value {
+impl ParsableValue for Value {
     fn try_i8(&self) -> Result<i8, ParseValueError> {
         match self {
             Value::I8(i) => Ok(*i),
