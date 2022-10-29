@@ -3,6 +3,7 @@ pub mod database;
 pub mod dataframe_hack;
 pub mod error_code;
 pub mod handler;
+pub mod id_gen;
 pub mod log;
 pub mod toolbox;
 pub mod utils;

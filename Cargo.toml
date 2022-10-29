@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 eyre = "0.6.1"
+thiserror = "1.0.37"
 serde = { version = "1.0.144", features = ["derive"] }
 regex = "1.5.6"
 tracing = "0.1.35"
@@ -17,7 +18,11 @@ rayon = "1.5.3"
 tokio = { version = "1", features = ["full"] }
 crossbeam = "*"
 nonzero_ext = "*"
-reqwest = { version = "*", default-features = false, features = ["rustls-tls", "serde_json", "json"] }
+reqwest = { version = "*", default-features = false, features = [
+	"rustls-tls",
+	"serde_json",
+	"json",
+] }
 tokio-tungstenite = { version = "*", features = [] }
 itertools = "0.10.3"
 futures = "*"
@@ -25,19 +30,20 @@ serde_json = "*"
 peroxide = "*"
 chrono = "*"
 static_assertions = "*"
-deadpool-postgres = "*"
 model = { path = "src/model" }
 gen = { path = "src/gen" }
 lib = { path = "src/lib" }
+localdb = { path = "src/localdb" }
 sha2 = "*"
 virtual-table = { git = "https://github.com/nschoellhorn/virtual-table" }
+gluesql = "0.12"
 
 [dependencies.uuid]
 version = "1.1.2"
 features = [
-    "v4",                # Lets you generate random UUIDs
-    "fast-rng",          # Use a faster (but still sufficiently random) RNG
-    "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
+	"v4",                # Lets you generate random UUIDs
+	"fast-rng",          # Use a faster (but still sufficiently random) RNG
+	"macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
 ]
 [features]
 default = []
@@ -56,3 +62,7 @@ path = "src/service/user/main.rs"
 [[bin]]
 name = "admin"
 path = "src/service/admin/main.rs"
+
+[[bin]]
+name = "db"
+path = "src/localdb/main.rs"

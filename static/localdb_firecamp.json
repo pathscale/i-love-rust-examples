@@ -1,0 +1,95 @@
+{
+    "meta": {
+        "__export_time": 1665296220500,
+        "__export_app": "firecamp_v2.7.1 ",
+        "__export_version": 1
+    },
+    "project": {
+        "name": "localdb",
+        "description": "",
+        "auth": {},
+        "scripts": {
+            "pre": "",
+            "post": "",
+            "test": ""
+        },
+        "meta": {
+            "active_auth": "no_auth"
+        }
+    },
+    "modules": [],
+    "requests": [
+        {
+            "meta": {
+                "name": "set_as_admin",
+                "description": "",
+                "type": "websocket",
+                "version": "2.0"
+            },
+            "url": {
+                "slashes": true,
+                "protocol": "ws:",
+                "hash": "",
+                "query": "",
+                "pathname": "/",
+                "auth": "",
+                "host": "localhost:8888",
+                "port": "8888",
+                "hostname": "localhost",
+                "password": "",
+                "username": "",
+                "origin": "ws://localhost:8888",
+                "href": "ws://localhost:8888/",
+                "query_params": [],
+                "path_params": []
+            },
+            "config": {
+                "protocols": [],
+                "reconnect": false,
+                "reconnectAttempts": 3,
+                "reconnectTimeout": 3000,
+                "rejectUnauthorized": false,
+                "followRedirects": true,
+                "handshakeTimeout": 3000,
+                "maxRedirects": 10,
+                "protocolVersion": 13,
+                "origin": "",
+                "maxPayload": -1
+            },
+            "connections": [
+                {
+                    "name": "Default",
+                    "headers": [],
+                    "query_params": [],
+                    "config": {
+                        "ping": false,
+                        "ping_interval": 3000
+                    },
+                    "is_default": true
+                }
+            ],
+            "message_collection": []
+        }
+    ],
+    "environments": [
+        {
+            "name": "Development",
+            "variables": {
+                "set_as_admin_json": {
+                    "__comment__": "for the purposes of agility when testing the admin service only, this request will set the user hardcoded in the 'signup' request collection to be an admin, and set its token to be the one hardcoded in the admin collection as well",
+                    "method": 40010,
+                    "seq": 1,
+                    "params": {
+                        "statements": "UPDATE user SET user_role = 'admin', admin_token = '01234567890123456789012345678901' WHERE username = 'user_one'"
+                    }
+                }
+            }
+        },
+        {
+            "name": "Production",
+            "variables": {
+                "variable_name": "variable_value"
+            }
+        }
+    ]
+}

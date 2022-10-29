@@ -3,20 +3,20 @@ use model::types::*;
 
 #[path = "auth/endpoints.rs"]
 mod auth_endpoints;
-#[path = "auth/pg_func.rs"]
-mod auth_pg_func;
+#[path = "auth/repo_func.rs"]
+mod auth_repo_func;
 
 #[path = "user/endpoints.rs"]
 mod user_endpoints;
 
-#[path = "user/pg_func.rs"]
-mod user_pg_func;
+#[path = "user/repo_func.rs"]
+mod user_repo_func;
 
 #[path = "admin/endpoints.rs"]
 mod admin_endpoints;
 
-#[path = "admin/pg_func.rs"]
-mod admin_pg_func;
+#[path = "admin/repo_func.rs"]
+mod admin_repo_func;
 
 pub fn get_services() -> Vec<Service> {
     vec![
@@ -26,11 +26,11 @@ pub fn get_services() -> Vec<Service> {
     ]
 }
 
-pub fn get_proc_functions() -> Vec<ProceduralFunction> {
+pub fn get_repo_functions() -> Vec<RepositoryFunction> {
     vec![
-        auth_pg_func::get_auth_pg_func(),
-        user_pg_func::get_user_pg_func(),
-        admin_pg_func::get_admin_pg_func(),
+        auth_repo_func::get_auth_repo_func(),
+        user_repo_func::get_user_repo_func(),
+        admin_repo_func::get_admin_repo_func(),
     ]
     .concat()
 }

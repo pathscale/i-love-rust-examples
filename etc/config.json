@@ -1,9 +1,42 @@
 {
-  "db": {
-    "host": "localhost",
-    "port": 5432,
-    "user": "postgres",
-    "password": "123456",
-    "dbname": "iloverust"
-  }
+	"db": {
+		"host": "localhost",
+		"port": 8888
+	},
+	"localdb": {
+		"name": "",
+		"host": "localhost",
+		"port": 8888,
+		"log_level": "Info",
+		"pub_certs": [],
+		"priv_cert": "",
+		"debug": true
+	},
+	"auth": {
+		"name": "",
+		"host": "localhost",
+		"port": 8889,
+		"log_level": "Info",
+		"pub_certs": [],
+		"priv_cert": "",
+		"debug": true
+	},
+	"user": {
+		"name": "",
+		"host": "localhost",
+		"port": 8890,
+		"log_level": "Info",
+		"pub_certs": [],
+		"priv_cert": "",
+		"debug": true
+	},
+	"admin": {
+		"name": "",
+		"host": "localhost",
+		"port": 8891,
+		"log_level": "Info",
+		"pub_certs": [],
+		"priv_cert": "",
+		"debug": true
+	}
 }

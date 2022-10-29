@@ -1,4 +1,4 @@
-#[path = "auth/method.rs"]
+#[path = "auth/method/mod.rs"]
 pub mod method;
 
 #[path = "auth/endpoints.rs"]

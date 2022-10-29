@@ -1,4 +1,4 @@
-use crate::database::SimpleDbClient;
+use crate::database::LocalDbClient;
 use crate::error_code::ErrorCode;
 use crate::log::LogLevel;
 use crate::ws::*;
@@ -64,7 +64,7 @@ pub struct RequestContext {
 }
 #[derive(Clone)]
 pub struct Toolbox {
-    db: Option<SimpleDbClient>,
+    db: Option<LocalDbClient>,
     values: Arc<DashMap<String, Arc<dyn Any + Send + Sync>>>,
     sender: mpsc::Sender<WsMessage>,
     tasks: Option<Arc<Mutex<Vec<tokio::task::JoinHandle<()>>>>>,
@@ -79,10 +79,10 @@ impl Toolbox {
             tasks: None,
         }
     }
-    pub fn set_db(&mut self, db: SimpleDbClient) {
+    pub fn set_db(&mut self, db: LocalDbClient) {
         self.db = Some(db);
     }
-    pub fn get_db<T: From<SimpleDbClient>>(&self) -> T {
+    pub fn get_db<T: From<LocalDbClient>>(&self) -> T {
         T::from(self.db.as_ref().expect("Db not Initialized").clone())
     }
     pub fn set_value(&mut self, key: &str, value: Arc<dyn Any + Send + Sync>) {
@@ -154,23 +154,6 @@ impl Toolbox {
                 }),
                 Err(err) if err.downcast_ref::<NoResp>().is_some() => {
                     return;
-                }
-
-                Err(err0) if err0.downcast_ref::<tokio_postgres::Error>().is_some() => {
-                    let err = err0.downcast_ref::<tokio_postgres::Error>().unwrap();
-                    if let Some(code) = err.code() {
-                        if let Ok(err) = CustomError::from_sql_error(code.code(), &err0) {
-                            request_error_to_resp(&ctx, err.code, err)
-                        } else {
-                            internal_error_to_resp(
-                                &ctx,
-                                StatusCode::INTERNAL_SERVER_ERROR.into(),
-                                err0,
-                            )
-                        }
-                    } else {
-                        internal_error_to_resp(&ctx, StatusCode::INTERNAL_SERVER_ERROR.into(), err0)
-                    }
                 }
                 Err(err) if err.downcast_ref::<CustomError>().is_some() => {
                     let err = err.downcast::<CustomError>().unwrap();

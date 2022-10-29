@@ -1,0 +1,123 @@
+{
+    "meta": {
+        "__export_time": 1665295992011,
+        "__export_app": "firecamp_v2.7.1 ",
+        "__export_version": 1
+    },
+    "project": {
+        "name": "user",
+        "description": "",
+        "auth": {},
+        "scripts": {
+            "pre": "",
+            "post": "",
+            "test": ""
+        },
+        "meta": {
+            "active_auth": "no_auth"
+        }
+    },
+    "modules": [],
+    "requests": [
+        {
+            "meta": {
+                "name": "foo",
+                "description": "",
+                "type": "websocket",
+                "version": "2.0"
+            },
+            "url": {
+                "slashes": true,
+                "protocol": "ws:",
+                "hash": "",
+                "query": "",
+                "pathname": "/Foo",
+                "auth": "",
+                "host": "localhost:8890",
+                "port": "8890",
+                "hostname": "localhost",
+                "password": "",
+                "username": "",
+                "origin": "ws://localhost:8890",
+                "href": "ws://localhost:8890/Foo",
+                "query_params": [],
+                "path_params": []
+            },
+            "config": {
+                "protocols": [],
+                "reconnect": false,
+                "reconnectAttempts": 3,
+                "reconnectTimeout": 3000,
+                "rejectUnauthorized": false,
+                "followRedirects": true,
+                "handshakeTimeout": 3000,
+                "maxRedirects": 10,
+                "protocolVersion": 13,
+                "origin": "",
+                "maxPayload": -1
+            },
+            "connections": [
+                {
+                    "name": "Default",
+                    "headers": [
+                        {
+                            "key": "Connection",
+                            "value": "upgrade",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Upgrade",
+                            "value": "websocket",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Sec-WebSocket-Version",
+                            "value": "13",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Accept",
+                            "value": "sec-websocket-accept",
+                            "disable": false,
+                            "type": "text"
+                        },
+                        {
+                            "key": "Sec-WebSocket-Protocol",
+                            "value": "0authorize,1user_one,266dae049-a060-4124-af18-073afba25989,32,43849823798,5android",
+                            "disable": false,
+                            "type": "text"
+                        }
+                    ],
+                    "query_params": [],
+                    "config": {
+                        "ping": false,
+                        "ping_interval": 3000
+                    },
+                    "is_default": true
+                }
+            ],
+            "message_collection": []
+        }
+    ],
+    "environments": [
+        {
+            "name": "Development",
+            "variables": {
+                "foo_json": {
+                    "__comment__": "auth parameters go in the 'Sec-WebSocket-Protocol' header field followed by a number that identifies the parameter and separated by commas. Every route besides signup and login should call the authorize method e.g.: 0auth_method_in_lowercase(signup,login,authorize --authorize in this case),1user_name,2token_acquired_at_login,3service_number(1=auth, 2=user, 3=admin --2 in this case),4device_id,5device_OS --look in the headers for a live example --authorization happens when the websocket connection is established",
+                    "method": 20010,
+                    "seq": 1
+                }
+            }
+        },
+        {
+            "name": "Production",
+            "variables": {
+                "variable_name": "variable_value"
+            }
+        }
+    ]
+}

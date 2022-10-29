@@ -1,4 +1,4 @@
-use crate::database::SimpleDbClient;
+use crate::database::LocalDbClient;
 use dashmap::DashMap;
 use eyre::*;
 use futures::stream::{SplitSink, SplitStream};
@@ -90,7 +90,7 @@ impl WebsocketServer {
     pub fn add_auth_controller(&mut self, controller: Arc<dyn AuthController>) {
         self.auth_controller = controller;
     }
-    pub fn add_database(&mut self, db: SimpleDbClient) {
+    pub fn add_database(&mut self, db: LocalDbClient) {
         self.toolbox.set_db(db);
     }
     pub fn get_toolbox(&self) -> Toolbox {
@@ -297,9 +297,12 @@ impl WebsocketServer {
         }
     }
     pub async fn listen(self) -> Result<()> {
-        if self.config.pub_cert.is_empty() && self.config.priv_cert.is_empty() {
+				let pub_certs_empty: bool = self.config.clone().pub_certs.unwrap_or_default().is_empty();
+				let priv_cert_empty: bool = self.config.clone().priv_cert.unwrap_or_default().is_empty();
+
+        if pub_certs_empty  && priv_cert_empty  {
             self.listen_tcp().await
-        } else if !self.config.pub_cert.is_empty() && !self.config.priv_cert.is_empty() {
+        } else if !pub_certs_empty && !priv_cert_empty {
             self.listen_tls().await
         } else {
             bail!("pub_cert and priv_cert should be both set or unset")
@@ -327,9 +330,9 @@ impl WebsocketServer {
         // Build TLS configuration.
         let tls_cfg = {
             // Load public certificate.
-            let certs = load_certs(&self.config.pub_cert)?;
+            let certs = load_certs(self.config.clone().pub_certs.unwrap_or_default())?;
             // Load private key.
-            let key = load_private_key(&self.config.priv_cert)?;
+            let key = load_private_key(&self.config.clone().priv_cert.unwrap_or_default())?;
             // Do not use client certificate authentication.
             let mut cfg = rustls::ServerConfig::builder()
                 .with_safe_defaults()
@@ -354,26 +357,28 @@ impl WebsocketServer {
         }
     }
 }
-// Load public certificate from file.
-fn load_certs(filename: &str) -> Result<Vec<rustls::Certificate>> {
-    // Open certificate file.
-    let certfile = fs::read(filename).with_context(|| format!("failed to open {}", filename))?;
+// Load public certificates from files.
+fn load_certs(filenames: Vec<String>) -> Result<Vec<rustls::Certificate>> {
+	let mut certificates: Vec<rustls::Certificate> = Vec::new();
+	for filename in filenames {
+		// Open certificate file.
+		let certfile = fs::read(filename.clone()).with_context(|| format!("failed to open {}", filename))?;
+		let pub_key = parse(certfile)?.contents;
+		certificates.push(rustls::Certificate(pub_key));
+	}
 
-    let pub_key = parse(certfile)?.contents;
-
-    Ok(vec![rustls::Certificate(pub_key)])
+	Ok(certificates)
 }
 
 // Load private key from file.
 fn load_private_key(filename: &str) -> Result<rustls::PrivateKey> {
-    // Open keyfile.
-    let keyfile = fs::read(filename).with_context(|| format!("failed to open {}", filename))?;
+	// Open keyfile.
+	let keyfile = fs::read(filename).with_context(|| format!("failed to open {}", filename))?;
+	let priv_key = parse(keyfile)?.contents;
 
-    let priv_key = parse(keyfile)?.contents;
+	if priv_key.len() == 0 {
+			bail!("expected a single private key");
+	}
 
-    if priv_key.len() == 0 {
-        bail!("expected a single private key");
-    }
-
-    Ok(rustls::PrivateKey(priv_key))
+	Ok(rustls::PrivateKey(priv_key))
 }
