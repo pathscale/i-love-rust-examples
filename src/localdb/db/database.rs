@@ -2,8 +2,6 @@ use gluesql::core::executor::Payload;
 use gluesql::core::result;
 use gluesql::prelude::{Glue, SledStorage};
 
-use super::sql;
-
 pub struct Database {
     inner: Glue<SledStorage>,
 }
@@ -20,14 +18,11 @@ impl Database {
     }
 
     fn init(&mut self) -> Result<(), DatabaseError> {
-        for create_table_statement in sql::create::TABLES {
-            self.exec(create_table_statement)?;
-        }
-        for create_index_statement in sql::create::INDEXES {
+        for create_statement in include_str!("../../../db/tbl.sql").split_terminator(";") {
             // BUG: gluesql will throw error when creating index in case it already exists
             // even if "IF NOT EXISTS" is used
             // TODO: update library when bug is fixed
-            match self.exec(create_index_statement) {
+            match self.exec(create_statement) {
                 Ok(_) => (),
                 Err(error) => println!("{:?}", error),
             };
