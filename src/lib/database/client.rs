@@ -53,7 +53,7 @@ impl LocalDbClient {
     where
         S: ?Sized + Sync + Stringable,
     {
-        let params = parse_req_params(statements, tokens)?;
+        let params = parse_req_params(statements, tokens);
         let req = DbRequest {
             method: 40010,
             seq: 0,
@@ -74,34 +74,27 @@ impl LocalDbClient {
 fn parse_req_params<S>(
     statements: &S,
     tokens: &[&(dyn Stringable + Sync)],
-) -> Result<ReqParams, LocalDbClientError>
+) -> ReqParams
 where
     S: ?Sized + Sync + Stringable,
 {
-    let mut failed_parse: Option<LocalDbClientError> = None;
-
-    let parsed_statements = statements.stringify()?;
+    let parsed_statements = statements.stringify();
     let parsed_tokens = tokens
         .clone()
         .to_owned()
         .iter_mut()
         .map(|t| t.stringify())
-        .filter_map(|t| t.map_err(|e| failed_parse = Some(e.into())).ok())
         .collect();
 
-    match failed_parse {
-        Some(e) => Err(e.into()),
-        None => Ok(ReqParams {
-            statements: parsed_statements,
-            tokens: parsed_tokens,
-        }),
-    }
+		ReqParams {
+				statements: parsed_statements,
+				tokens: parsed_tokens,
+		}
 }
 
 #[derive(Debug)]
 pub enum LocalDbClientError {
     DeserializationError(serde_json::Error),
-    ConversionError(super::stringable::StringifyError),
     PoolError(deadpool::managed::PoolError<DbConnectionError>),
     BuildError(deadpool::managed::BuildError<ErrReport>),
     DbConnectionError(DbConnectionError),
@@ -112,7 +105,6 @@ impl std::fmt::Display for LocalDbClientError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::DeserializationError(e) => write!(f, "{:?}", e),
-            Self::ConversionError(e) => write!(f, "{:?}", e),
             Self::PoolError(e) => write!(f, "{:?}", e),
             Self::BuildError(e) => write!(f, "{:?}", e),
             Self::DbConnectionError(e) => write!(f, "{:?}", e),
@@ -126,12 +118,6 @@ impl std::error::Error for LocalDbClientError {}
 impl From<serde_json::Error> for LocalDbClientError {
     fn from(e: serde_json::Error) -> Self {
         Self::DeserializationError(e)
-    }
-}
-
-impl From<super::stringable::StringifyError> for LocalDbClientError {
-    fn from(e: super::stringable::StringifyError) -> Self {
-        Self::ConversionError(e)
     }
 }
 
